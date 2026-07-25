@@ -9,7 +9,6 @@ import { PdfEngine } from '../../core/pdf/PdfService';
 import { ReadingNoteService } from '../../core/notes/ReadingNoteService';
 import { IReadingNote } from '../../core/notes/ReadingNoteModel';
 import { Logger } from '../../core/logger/Logger';
-import { usePdfSearch } from './usePdfSearch';
 
 export interface UsePdfReaderOptions {
   docId: string;
@@ -43,21 +42,6 @@ export function usePdfReader({
   const [showSearchNoteDialog, setShowSearchNoteDialog] = useState<boolean>(false);
   const [editingNote, setEditingNote] = useState<IReadingNote | null>(null);
   const [notes, setNotes] = useState<IReadingNote[]>([]);
-
-  // Page Jump Helper
-  const handleJumpToPage = useCallback((pageNumber: number) => {
-    setCurrentPage(pageNumber);
-    const pageElem = document.getElementById(`pdf-page-container-${pageNumber}`);
-    if (pageElem) {
-      pageElem.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  }, []);
-
-  // PDF Text Layer Local Search Hook
-  const pdfSearch = usePdfSearch({
-    pdfDoc,
-    onJumpToPage: handleJumpToPage,
-  });
 
   // Load PDF Document & Restore Last Read Page
   useEffect(() => {
@@ -126,22 +110,12 @@ export function usePdfReader({
 
   const handleZoomIn = useCallback(() => {
     setFitWidth(false);
-    setScale((prev) => Math.min(Number((prev + 0.15).toFixed(2)), 3.0));
+    setScale((prev) => Math.min(prev + 0.15, 2.5));
   }, []);
 
   const handleZoomOut = useCallback(() => {
     setFitWidth(false);
-    setScale((prev) => Math.max(Number((prev - 0.15).toFixed(2)), 0.4));
-  }, []);
-
-  const handleSetScale = useCallback((newScale: number) => {
-    setFitWidth(false);
-    setScale(Math.min(Math.max(Number(newScale.toFixed(2)), 0.4), 3.0));
-  }, []);
-
-  const handleResetZoom = useCallback(() => {
-    setFitWidth(false);
-    setScale(1.0);
+    setScale((prev) => Math.max(prev - 0.15, 0.5));
   }, []);
 
   const toggleFitWidth = useCallback(() => {
@@ -212,9 +186,6 @@ export function usePdfReader({
     notes,
     handleZoomIn,
     handleZoomOut,
-    handleSetScale,
-    handleResetZoom,
-    setScale,
     toggleFitWidth,
     toggleAutoCropMargins,
     setViewMode,
@@ -224,7 +195,5 @@ export function usePdfReader({
     handleSelectNoteFromSearch,
     handleDeleteNote,
     handlePageChange,
-    handleJumpToPage,
-    pdfSearch,
   };
 }

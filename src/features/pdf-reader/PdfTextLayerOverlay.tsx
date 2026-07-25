@@ -15,17 +15,22 @@ interface PdfTextLayerOverlayProps {
   containerHeight: number;
 }
 
-interface TextSpanItem {
+interface ITextSpan {
   id: string;
   str: string;
   left: number;
   top: number;
-  width: number;
-  height: number;
   fontSize: number;
+  width: number;
 }
 
-const pageTextCache = new WeakMap<object, any>();
+interface IPdfTextItem {
+  str: string;
+  transform: number[];
+  width: number;
+}
+
+const textContentCache = new WeakMap<object, any>();
 
 export const PdfTextLayerOverlay: React.FC<PdfTextLayerOverlayProps> = React.memo(({
   pdfDoc,
@@ -34,68 +39,54 @@ export const PdfTextLayerOverlay: React.FC<PdfTextLayerOverlayProps> = React.mem
   containerWidth,
   containerHeight,
 }) => {
-  const [spans, setSpans] = useState<TextSpanItem[]>([]);
+  const [spans, setSpans] = useState<ITextSpan[]>([]);
 
   useEffect(() => {
     let isSubscribed = true;
 
-    async function loadTextContent() {
+    async function extractTextContent() {
       try {
         const page = await pdfDoc.getPage(pageNumber);
-        if (!isSubscribed) return;
-
         const viewport = page.getViewport({ scale });
-
-        let textContent = pageTextCache.get(page);
+        
+        let textContent = textContentCache.get(page);
         if (!textContent) {
           textContent = await page.getTextContent();
-          pageTextCache.set(page, textContent);
+          textContentCache.set(page, textContent);
         }
 
-        if (!isSubscribed || !textContent || !textContent.items) return;
+        if (!isSubscribed) return;
 
-        const spanList: TextSpanItem[] = [];
+        const spanList: ITextSpan[] = [];
 
         for (let i = 0; i < textContent.items.length; i++) {
-          const item: any = textContent.items[i];
+          const item = textContent.items[i] as unknown as IPdfTextItem;
           if (!item.str || item.str.trim().length === 0) continue;
 
-          const tx = item.transform[4];
-          const ty = item.transform[5];
-          const fontH = Math.abs(item.transform[3]) || 12;
-          const fontW = item.width || (item.str.length * fontH * 0.5);
+          // Compute transform coordinates using PDF.js matrix helper
+          const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
+          const fontHeight = Math.sqrt(tx[2] * tx[2] + tx[3] * tx[3]);
 
-          // convertToViewportPoint converts (x, y) in PDF space to [vx, vy] in viewport pixel space
-          const p1 = viewport.convertToViewportPoint(tx, ty);
-          const p2 = viewport.convertToViewportPoint(tx + fontW, ty + fontH);
+          const left = tx[4];
+          const top = tx[5] - fontHeight;
 
-          const left = Math.min(p1[0], p2[0]);
-          const top = Math.min(p1[1], p2[1]);
-          const width = Math.abs(p1[0] - p2[0]);
-          const height = Math.abs(p1[1] - p2[1]);
-
-          if (width > 0 && height > 0) {
-            spanList.push({
-              id: `span-${pageNumber}-${i}`,
-              str: item.str,
-              left,
-              top,
-              width,
-              height,
-              fontSize: height,
-            });
-          }
+          spanList.push({
+            id: `text-${pageNumber}-${i}`,
+            str: item.str,
+            left,
+            top,
+            fontSize: fontHeight,
+            width: item.width * scale,
+          });
         }
 
-        if (isSubscribed) {
-          setSpans(spanList);
-        }
+        setSpans(spanList);
       } catch (err) {
         Logger.error('PdfTextLayerOverlay', `Failed to load text layer for page ${pageNumber}`, err);
       }
     }
 
-    loadTextContent();
+    extractTextContent();
 
     return () => {
       isSubscribed = false;
@@ -104,7 +95,7 @@ export const PdfTextLayerOverlay: React.FC<PdfTextLayerOverlayProps> = React.mem
 
   return (
     <div
-      className="pdf-text-layer absolute inset-0 z-10 select-text overflow-hidden pointer-events-auto leading-none"
+      className="absolute inset-0 z-10 select-text overflow-hidden leading-none pointer-events-auto"
       style={{
         width: `${containerWidth}px`,
         height: `${containerHeight}px`,
@@ -113,18 +104,14 @@ export const PdfTextLayerOverlay: React.FC<PdfTextLayerOverlayProps> = React.mem
       {spans.map((span) => (
         <span
           key={span.id}
-          className="absolute cursor-text whitespace-pre select-text text-transparent"
+          className="absolute cursor-text text-transparent selection:bg-amber-300/40 selection:text-transparent"
           style={{
             left: `${span.left}px`,
             top: `${span.top}px`,
-            width: `${span.width}px`,
-            height: `${span.height}px`,
             fontSize: `${span.fontSize}px`,
-            lineHeight: `${span.height}px`,
-            color: 'transparent',
-            fontFamily: 'sans-serif, serif',
-            pointerEvents: 'auto',
-            display: 'inline-block',
+            fontFamily: 'serif',
+            whiteSpace: 'pre',
+            transformOrigin: '0% 0%',
           }}
         >
           {span.str}

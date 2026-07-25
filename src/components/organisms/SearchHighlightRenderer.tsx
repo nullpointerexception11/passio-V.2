@@ -1,66 +1,44 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React from 'react';
-import { IPdfSearchMatch } from '../../core/pdf/PdfSearchService';
-import { HighlightEngine } from '../../core/highlight/HighlightEngine';
+import { SearchResultMatch } from '../../core/pdf/PdfSearchService';
 
 interface SearchHighlightRendererProps {
-  matches: IPdfSearchMatch[];
-  currentMatchId?: string | null;
-  pageWidth: number;
-  pageHeight: number;
+  pageNumber: number;
+  matches: SearchResultMatch[];
+  activeMatchIndex: number;
 }
 
-export const SearchHighlightRenderer: React.FC<SearchHighlightRendererProps> = React.memo(({
+export const SearchHighlightRenderer: React.FC<SearchHighlightRendererProps> = ({
+  pageNumber,
   matches,
-  currentMatchId,
-  pageWidth,
-  pageHeight,
+  activeMatchIndex,
 }) => {
-  if (!matches || matches.length === 0 || pageWidth <= 0 || pageHeight <= 0) {
-    return null;
-  }
+  const pageMatches = matches.filter((m) => m.pageNumber === pageNumber);
+
+  if (pageMatches.length === 0) return null;
 
   return (
-    <div
-      className="absolute inset-0 pointer-events-none z-20 overflow-hidden"
-      style={{ width: `${pageWidth}px`, height: `${pageHeight}px` }}
-    >
-      {matches.map((match) => {
-        const isActive = match.id === currentMatchId;
+    <div className="absolute inset-0 pointer-events-none z-10">
+      {pageMatches.map((match) => {
+        const isActive = matches[activeMatchIndex] === match;
+        if (!match.boundingRects) return null;
 
-        return (
-          <React.Fragment key={match.id}>
-            {match.rects.map((rect, idx) => {
-              const bounds = HighlightEngine.denormalizeRect(rect, pageWidth, pageHeight);
-
-              return (
-                <div
-                  key={`${match.id}-rect-${idx}`}
-                  className={`absolute rounded-[2px] transition-all duration-200 ${
-                    isActive
-                      ? 'bg-amber-400/75 dark:bg-amber-400/85 ring-2 ring-amber-600 dark:ring-amber-300 shadow-lg scale-[1.02] z-30 animate-pulse'
-                      : 'bg-yellow-300/45 dark:bg-yellow-400/35 border-b border-yellow-500/50'
-                  }`}
-                  style={{
-                    left: `${bounds.left}px`,
-                    top: `${bounds.top}px`,
-                    width: `${Math.max(4, bounds.width)}px`,
-                    height: `${Math.max(12, bounds.height)}px`,
-                    mixBlendMode: 'multiply',
-                  }}
-                  title={`Arama Eşleşmesi: "${match.matchedText}"`}
-                />
-              );
-            })}
-          </React.Fragment>
-        );
+        return match.boundingRects.map((rect, rIdx) => (
+          <div
+            key={`${match.matchIndex}-${rIdx}`}
+            style={{
+              left: `${rect.x}px`,
+              top: `${rect.y}px`,
+              width: `${rect.width}px`,
+              height: `${rect.height}px`,
+            }}
+            className={`absolute transition-all rounded-xs ${
+              isActive
+                ? 'bg-amber-400/60 dark:bg-amber-500/70 ring-2 ring-amber-500'
+                : 'bg-yellow-300/40 dark:bg-yellow-400/30'
+            }`}
+          />
+        ));
       })}
     </div>
   );
-});
-
-export default SearchHighlightRenderer;
+};

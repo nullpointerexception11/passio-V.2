@@ -14,8 +14,6 @@ export interface IHighlightRect {
   height: number; // 0..1 relative to page viewport height
 }
 
-export type HighlightStyleType = 'highlight' | 'underline';
-
 /**
  * Knowledge Fragment Model
  * Represents a highlighted text segment extracted from a source document.
@@ -27,7 +25,6 @@ export interface IHighlightFragment {
   selectedText: string;
   rects: IHighlightRect[];
   color: HighlightColor;
-  styleType?: HighlightStyleType; // 'highlight' (background fill) or 'underline' (bottom line)
   createdAt: string;    // ISO Date string
   updatedAt: string;    // ISO Date string
   tags?: string[];

@@ -53,15 +53,3 @@ body {
 textarea:focus, input:focus {
   outline: none;
 }
-
-/* PDF.js Text Layer Overlay Styles */
-.pdf-text-layer span::selection {
-  background: rgba(245, 158, 11, 0.35) !important;
-  color: transparent !important;
-}
-
-.pdf-text-layer span::-moz-selection {
-  background: rgba(245, 158, 11, 0.35) !important;
-  color: transparent !important;
-}
-

@@ -5,7 +5,7 @@
 
 import { db } from '../../db/connection';
 import { Logger } from '../logger/Logger';
-import { IHighlightFragment, HighlightColor, HighlightStyleType } from './HighlightModel';
+import { IHighlightFragment, HighlightColor } from './HighlightModel';
 
 export interface DBHighlightRow {
   id: string;
@@ -18,9 +18,6 @@ export interface DBHighlightRow {
   rects_json?: string;
   rectsJson?: string;
   color: HighlightColor;
-  style_type?: HighlightStyleType;
-  styleType?: HighlightStyleType;
-  note?: string;
   created_at?: string;
   createdAt?: string;
   updated_at?: string;
@@ -79,9 +76,6 @@ class HighlightRepositoryService {
         rectsJson: JSON.stringify(fragment.rects),
         rects_json: JSON.stringify(fragment.rects),
         color: fragment.color,
-        styleType: fragment.styleType || 'highlight',
-        style_type: fragment.styleType || 'highlight',
-        note: fragment.note || null,
         createdAt: fragment.createdAt || now,
         created_at: fragment.createdAt || now,
         updatedAt: now,
@@ -137,8 +131,6 @@ class HighlightRepositoryService {
         selectedText: row.selectedText || row.selected_text || '',
         rects,
         color: (row.color as HighlightColor) || 'yellow',
-        styleType: (row.styleType || row.style_type as HighlightStyleType) || 'highlight',
-        note: row.note || undefined,
         createdAt: row.createdAt || row.created_at || new Date().toISOString(),
         updatedAt: row.updatedAt || row.updated_at || new Date().toISOString(),
       };

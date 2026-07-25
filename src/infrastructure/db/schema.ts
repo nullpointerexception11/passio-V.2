@@ -66,8 +66,6 @@ export const highlights = sqliteTable('highlights', {
   selectedText: text('selected_text').notNull(),
   rectsJson: text('rects_json').notNull(),
   color: text('color').notNull().default('yellow'),
-  styleType: text('style_type').notNull().default('highlight'),
-  note: text('note'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 });

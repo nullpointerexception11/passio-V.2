@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ArrowLeft, 
@@ -20,13 +20,20 @@ import {
   Search,
   Sun,
   Moon,
-  Crop
+  Crop,
+  Download,
+  List
 } from 'lucide-react';
 import { usePdfReader } from './usePdfReader';
+import { usePdfSearch } from './usePdfSearch';
+import { usePdfOutline } from './usePdfOutline';
 import { PdfReaderEngine } from './PdfReaderEngine';
 import { ReadingNoteDialog } from '../../components/molecules/ReadingNoteDialog';
 import { ReadingNoteSearchDialog } from '../../components/molecules/ReadingNoteSearchDialog';
+import { PdfIndexingStatusBadge } from '../../components/atoms/PdfIndexingStatusBadge';
 import { PdfSearchDialog } from '../../components/molecules/PdfSearchDialog';
+import { PdfTocSidebar } from '../../components/molecules/PdfTocSidebar';
+import { ExportDocumentModal } from '../../components/molecules/ExportDocumentModal';
 import { useTheme, READING_MODES, PdfReadingMode } from '../../core/theme/ThemeContext';
 
 export interface PdfReaderScreenProps {
@@ -66,9 +73,6 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
     notes,
     handleZoomIn,
     handleZoomOut,
-    handleSetScale,
-    handleResetZoom,
-    setScale,
     toggleFitWidth,
     toggleAutoCropMargins,
     setViewMode,
@@ -78,7 +82,6 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
     handleSelectNoteFromSearch,
     handleDeleteNote,
     handlePageChange,
-    pdfSearch,
   } = usePdfReader({
     docId,
     sourceUrlOrBuffer,
@@ -88,20 +91,44 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
 
   const { themeType, toggleTheme, pdfReadingMode, setPdfReadingMode } = useTheme();
 
-  const [showZoomPresets, setShowZoomPresets] = React.useState(false);
+  // TOC (Outline) Engine
+  const { outline } = usePdfOutline(pdfDoc);
+  const [showToc, setShowToc] = useState<boolean>(false);
 
-  // Ctrl+F / Cmd+F Keyboard Shortcut Listener for PDF Local Search
-  React.useEffect(() => {
+  // PDF Search Engine
+  const {
+    isSearchOpen,
+    setIsSearchOpen,
+    toggleSearch,
+    searchResults,
+    isSearching,
+    activeMatchIndex,
+    setActiveMatchIndex,
+    handleSearch,
+  } = usePdfSearch(docId, pdfDoc);
+
+  // Export Notes Modal State
+  const [showExportModal, setShowExportModal] = useState<boolean>(false);
+
+  // Jump to specific page
+  const handleJumpToPage = (pageNum: number) => {
+    const pageElem = document.getElementById(`pdf-page-container-${pageNum}`);
+    if (pageElem) {
+      pageElem.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  // Keyboard shortcut (Ctrl/Cmd + F for PDF Search, Ctrl/Cmd + O for TOC)
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
         e.preventDefault();
-        pdfSearch.setIsSearchOpen(true);
+        toggleSearch();
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [pdfSearch]);
+  }, [toggleSearch]);
 
   return (
     <div
@@ -122,103 +149,62 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
       >
         {/* Left: Document Information & Page Count */}
         <div className="flex items-center gap-3">
+          {/* TOC Sidebar Toggle Button */}
+          {outline.length > 0 && (
+            <button
+              onClick={() => setShowToc((prev) => !prev)}
+              className="p-1.5 rounded border transition-all cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 active:scale-95 text-stone-600 dark:text-stone-300"
+              style={{ borderColor: 'var(--color-border-subtle)' }}
+              title="İçindekiler Tablosu"
+            >
+              <List className="w-4 h-4" />
+            </button>
+          )}
+
           <div className="flex flex-col">
             <h1 className="text-xs font-serif font-medium tracking-wide truncate max-w-xs sm:max-w-md">
               {docTitle}
             </h1>
-            <span className="text-[10px] font-mono opacity-50 tracking-wider">
-              {isLoading ? 'Yükleniyor...' : `Sayfa ${currentPage} / ${totalPages}`}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-mono opacity-50 tracking-wider">
+                {isLoading ? 'Yükleniyor...' : `Sayfa ${currentPage} / ${totalPages}`}
+              </span>
+              <PdfIndexingStatusBadge docId={docId} />
+            </div>
           </div>
         </div>
 
         {/* Top Right: Header Controls */}
         <div className="flex items-center gap-2 relative">
-          {/* Quick Zoom Bar */}
-          <div className="relative flex items-center gap-1 bg-black/5 dark:bg-white/5 p-1 rounded-lg border" style={{ borderColor: 'var(--color-border-subtle)' }}>
-            <button
-              onClick={handleZoomOut}
-              className="p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
-              title="Uzaklaştır"
-            >
-              <ZoomOut className="w-3.5 h-3.5" />
-            </button>
-
-            <button
-              onClick={() => setShowZoomPresets((prev) => !prev)}
-              className="px-2 py-0.5 rounded text-[11px] font-mono font-medium hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer"
-              title="Yakınlaştırma Oranı Seç"
-            >
-              {Math.round(scale * 100)}%
-            </button>
-
-            <button
-              onClick={handleZoomIn}
-              className="p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
-              title="Yakınlaştır"
-            >
-              <ZoomIn className="w-3.5 h-3.5" />
-            </button>
-
-            {/* Zoom Presets Dropdown */}
-            <AnimatePresence>
-              {showZoomPresets && (
-                <motion.div
-                  initial={{ opacity: 0, y: 6, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 6, scale: 0.95 }}
-                  transition={{ duration: 0.12 }}
-                  className="absolute top-full mt-2 right-0 w-36 py-1.5 rounded-lg border shadow-xl z-50 font-mono text-xs flex flex-col backdrop-blur-md"
-                  style={{
-                    backgroundColor: 'var(--color-bg-surface)',
-                    borderColor: 'var(--color-border-subtle)',
-                    color: 'var(--color-text-primary)',
-                  }}
-                >
-                  {[0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0].map((presetScale) => (
-                    <button
-                      key={`zoom-preset-${presetScale}`}
-                      onClick={() => {
-                        handleSetScale(presetScale);
-                        setShowZoomPresets(false);
-                      }}
-                      className={`px-3 py-1.5 text-left hover:bg-amber-500/10 hover:text-amber-600 dark:hover:text-amber-400 transition-colors flex items-center justify-between cursor-pointer ${
-                        Math.abs(scale - presetScale) < 0.05 ? 'font-bold text-amber-600 dark:text-amber-400' : ''
-                      }`}
-                    >
-                      <span>{Math.round(presetScale * 100)}%</span>
-                      {Math.abs(scale - presetScale) < 0.05 && <Check className="w-3 h-3" />}
-                    </button>
-                  ))}
-                  <div className="border-t my-1" style={{ borderColor: 'var(--color-border-subtle)' }} />
-                  <button
-                    onClick={() => {
-                      toggleFitWidth();
-                      setShowZoomPresets(false);
-                    }}
-                    className="px-3 py-1.5 text-left hover:bg-amber-500/10 hover:text-amber-600 dark:hover:text-amber-400 transition-colors cursor-pointer text-[11px]"
-                  >
-                    {fitWidth ? '✓ Genişliğe Sığdırıldı' : 'Genişliğe Sığdır'}
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-          {/* PDF Metin Arama Butonu */}
+          {/* PDF Arama Butonu */}
           <button
-            onClick={() => pdfSearch.setIsSearchOpen((prev) => !prev)}
+            onClick={toggleSearch}
             className="p-2 rounded border transition-all cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 active:scale-95 flex items-center justify-center gap-1.5"
             style={{
-              borderColor: pdfSearch.isSearchOpen ? 'var(--color-text-accent)' : 'var(--color-border-subtle)',
+              borderColor: isSearchOpen ? 'var(--color-text-accent)' : 'var(--color-border-subtle)',
               color: 'var(--color-text-primary)',
             }}
-            title="PDF İçi Metin Arama (Ctrl+F)"
+            title="Belgede Ara (Ctrl+F)"
           >
-            <Search className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-            <span className="text-xs font-mono font-medium hidden sm:inline">Arama</span>
+            <Search className="w-4 h-4 text-stone-600 dark:text-stone-300" />
+            <span className="text-xs font-mono font-medium hidden md:inline">Ara</span>
           </button>
 
-          {/* 1. Ayarlar (Sabit Üst Bar Butonu) */}
+          {/* Dışa Aktar Butonu */}
+          <button
+            onClick={() => setShowExportModal(true)}
+            className="p-2 rounded border transition-all cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 active:scale-95 flex items-center justify-center gap-1.5"
+            style={{
+              borderColor: 'var(--color-border-subtle)',
+              color: 'var(--color-text-primary)',
+            }}
+            title="Notları Dışa Aktar"
+          >
+            <Download className="w-4 h-4 text-stone-600 dark:text-stone-300" />
+            <span className="text-xs font-mono font-medium hidden md:inline">Dışa Aktar</span>
+          </button>
+
+          {/* Ayarlar (Sabit Üst Bar Butonu) */}
           <div className="relative">
             <button
               onClick={() => setShowSettings((prev) => !prev)}
@@ -391,7 +377,7 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
             </AnimatePresence>
           </div>
 
-          {/* 2. Not (aktif - Reading Notes Engine) */}
+          {/* Notlar Menüsü */}
           <div className="relative">
             <button
               onClick={() => setShowNoteMenu((prev) => !prev)}
@@ -440,12 +426,22 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
                     <Search className="w-3.5 h-3.5 opacity-60" />
                     <span>Not Ara</span>
                   </button>
+                  <button
+                    onClick={() => {
+                      setShowNoteMenu(false);
+                      setShowExportModal(true);
+                    }}
+                    className="w-full px-3 py-2 rounded-lg flex items-center gap-2 transition-colors hover:bg-black/5 dark:hover:bg-white/5 text-left cursor-pointer border-t border-stone-200 dark:border-stone-800 mt-1 pt-2"
+                  >
+                    <Download className="w-3.5 h-3.5 opacity-60" />
+                    <span>Dışa Aktar</span>
+                  </button>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
 
-          {/* 2. Vurgu */}
+          {/* Vurgu */}
           <div
             className="p-2 rounded border border-amber-500/50 bg-amber-500/10 text-amber-500 flex items-center justify-center transition-all cursor-default"
             title="Vurgulama Modu (Metin seçerek vurgulayın)"
@@ -453,7 +449,7 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
             <Highlighter className="w-4 h-4 text-amber-500" />
           </div>
 
-          {/* 3. Kapat */}
+          {/* Kapat */}
           <button
             onClick={onClose}
             className="p-2 rounded border transition-all cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 active:scale-95 flex items-center justify-center"
@@ -476,28 +472,13 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
           }`}
         >
           {isLoading ? (
-            /* Premium Calm Loading View with Subtle Spinner & Transition */
-            <motion.div
-              key="pdf-loading-state"
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.98 }}
-              transition={{ duration: 0.25, ease: 'easeInOut' }}
-              className="flex flex-col items-center justify-center h-full gap-5 p-6"
-            >
-              <div className="relative flex items-center justify-center">
-                <div className="w-10 h-10 rounded-full border-2 border-amber-500/20 border-t-amber-500 animate-spin" />
-                <div className="absolute w-2 h-2 bg-amber-500/60 rounded-full animate-ping" />
-              </div>
-              <div className="flex flex-col items-center gap-1.5 text-center">
-                <span className="text-xs font-mono tracking-widest uppercase text-amber-600 dark:text-amber-400 font-medium">
-                  PDF Belgesi İşleniyor
-                </span>
-                <span className="text-[11px] font-sans opacity-60 max-w-xs">
-                  Metin ve sayfa katmanları hazırlanıyor...
-                </span>
-              </div>
-            </motion.div>
+            /* Premium Calm Skeleton Loading View */
+            <div className="flex flex-col items-center justify-center h-full gap-4">
+              <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin border-neutral-400" />
+              <span className="text-xs font-mono tracking-widest uppercase opacity-50">
+                PDF Okuma Motoru Hazırlanıyor...
+              </span>
+            </div>
           ) : pdfDoc ? (
             <PdfReaderEngine
               docId={docId}
@@ -508,9 +489,6 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
               viewMode={viewMode}
               initialPage={lastReadPage}
               onPageChange={handlePageChange}
-              onScaleChange={setScale}
-              getMatchesForPage={pdfSearch.getMatchesForPage}
-              currentMatchId={pdfSearch.currentMatch?.id}
             />
           ) : (
             <div className="flex flex-col items-center justify-center h-full gap-2 text-red-500 font-mono text-xs">
@@ -556,19 +534,41 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
         </AnimatePresence>
       </div>
 
-      {/* Floating PDF Metin Arama Dialog / Bar */}
+      {/* PDF Table of Contents (İçindekiler) Drawer */}
+      <PdfTocSidebar
+        isOpen={showToc}
+        onClose={() => setShowToc(false)}
+        outline={outline}
+        onSelectPage={(pageNum) => {
+          handleJumpToPage(pageNum);
+          setShowToc(false);
+        }}
+      />
+
+      {/* PDF Search Modal Dialog */}
       <PdfSearchDialog
-        isOpen={pdfSearch.isSearchOpen}
-        onClose={() => pdfSearch.setIsSearchOpen(false)}
-        query={pdfSearch.query}
-        onQueryChange={pdfSearch.setQuery}
-        isSearching={pdfSearch.isSearching}
-        matches={pdfSearch.matches}
-        currentMatchIndex={pdfSearch.currentMatchIndex}
-        onNext={pdfSearch.nextMatch}
-        onPrev={pdfSearch.prevMatch}
-        onSelectMatch={pdfSearch.jumpToMatch}
-        onClear={pdfSearch.clearSearch}
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        onSearch={handleSearch}
+        results={searchResults}
+        isSearching={isSearching}
+        activeMatchIndex={activeMatchIndex}
+        onSelectMatch={(index) => {
+          setActiveMatchIndex(index);
+          if (searchResults[index]) {
+            handleJumpToPage(searchResults[index].pageNumber);
+          }
+        }}
+        onJumpToPage={handleJumpToPage}
+      />
+
+      {/* Export Document Modal */}
+      <ExportDocumentModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        documentTitle={docTitle}
+        docId={docId}
+        notes={notes}
       />
     </div>
   );

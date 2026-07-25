@@ -1,135 +1,71 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
-import { PdfSearchEngine, IPdfSearchMatch } from '../../core/pdf/PdfSearchService';
-import { Logger } from '../../core/logger/Logger';
+import { PdfSearchService, SearchResultMatch } from '../../core/pdf/PdfSearchService';
+import { PdfIndexingWorkerService } from '../../core/pdf/PdfIndexingWorkerService';
 
-export interface UsePdfSearchOptions {
-  pdfDoc: pdfjsLib.PDFDocumentProxy | null;
-  onJumpToPage?: (pageNumber: number) => void;
-}
+export function usePdfSearch(docId: string, pdfDoc: pdfjsLib.PDFDocumentProxy | null) {
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchResultMatch[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [activeMatchIndex, setActiveMatchIndex] = useState(0);
 
-export function usePdfSearch({ pdfDoc, onJumpToPage }: UsePdfSearchOptions) {
-  const [query, setQuery] = useState<string>('');
-  const [isSearching, setIsSearching] = useState<boolean>(false);
-  const [matches, setMatches] = useState<IPdfSearchMatch[]>([]);
-  const [currentMatchIndex, setCurrentMatchIndex] = useState<number>(-1);
-  const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
-
-  // Perform search whenever query or pdfDoc changes
+  // Trigger background indexing when document is loaded
   useEffect(() => {
-    if (!pdfDoc || !query.trim() || query.trim().length < 2) {
-      setMatches([]);
-      setCurrentMatchIndex(-1);
-      setIsSearching(false);
-      return;
+    if (pdfDoc && docId) {
+      PdfIndexingWorkerService.indexDocument(docId, pdfDoc);
     }
+  }, [docId, pdfDoc]);
 
-    let isSubscribed = true;
-    setIsSearching(true);
-
-    const timer = setTimeout(async () => {
-      try {
-        const results = await PdfSearchEngine.search(pdfDoc, query);
-        if (!isSubscribed) return;
-
-        setMatches(results);
-        setIsSearching(false);
-
-        if (results.length > 0) {
-          setCurrentMatchIndex(0);
-          if (onJumpToPage) {
-            onJumpToPage(results[0].pageNumber);
-          }
-        } else {
-          setCurrentMatchIndex(-1);
-        }
-      } catch (err) {
-        Logger.error('usePdfSearch', 'Error performing PDF keyword search', err);
-        if (isSubscribed) {
-          setMatches([]);
-          setCurrentMatchIndex(-1);
-          setIsSearching(false);
-        }
+  const handleSearch = useCallback(
+    async (query: string) => {
+      setSearchQuery(query);
+      if (!query || query.trim().length === 0 || !pdfDoc) {
+        setSearchResults([]);
+        setActiveMatchIndex(0);
+        return;
       }
-    }, 200);
 
-    return () => {
-      isSubscribed = false;
-      clearTimeout(timer);
-    };
-  }, [pdfDoc, query, onJumpToPage]);
-
-  // Jump to specific match index
-  const jumpToMatch = useCallback(
-    (index: number) => {
-      if (matches.length === 0) return;
-      const validIndex = Math.max(0, Math.min(matches.length - 1, index));
-      setCurrentMatchIndex(validIndex);
-
-      const targetMatch = matches[validIndex];
-      if (targetMatch && onJumpToPage) {
-        onJumpToPage(targetMatch.pageNumber);
+      setIsSearching(true);
+      try {
+        const matches = await PdfSearchService.searchDocument(pdfDoc, query);
+        setSearchResults(matches);
+        setActiveMatchIndex(0);
+      } catch (err) {
+        console.warn('[usePdfSearch] Search error:', err);
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
       }
     },
-    [matches, onJumpToPage]
+    [pdfDoc]
   );
 
-  // Navigate to next match
   const nextMatch = useCallback(() => {
-    if (matches.length === 0) return;
-    const nextIdx = (currentMatchIndex + 1) % matches.length;
-    jumpToMatch(nextIdx);
-  }, [matches.length, currentMatchIndex, jumpToMatch]);
+    if (searchResults.length === 0) return;
+    setActiveMatchIndex((prev) => (prev + 1) % searchResults.length);
+  }, [searchResults]);
 
-  // Navigate to previous match
-  const prevMatch = useCallback(() => {
-    if (matches.length === 0) return;
-    const prevIdx = (currentMatchIndex - 1 + matches.length) % matches.length;
-    jumpToMatch(prevIdx);
-  }, [matches.length, currentMatchIndex, jumpToMatch]);
+  const previousMatch = useCallback(() => {
+    if (searchResults.length === 0) return;
+    setActiveMatchIndex((prev) => (prev - 1 + searchResults.length) % searchResults.length);
+  }, [searchResults]);
 
-  // Clear search
-  const clearSearch = useCallback(() => {
-    setQuery('');
-    setMatches([]);
-    setCurrentMatchIndex(-1);
-    setIsSearching(false);
+  const toggleSearch = useCallback(() => {
+    setIsSearchOpen((prev) => !prev);
   }, []);
 
-  // Filter matches for a specific page number
-  const getMatchesForPage = useCallback(
-    (pageNumber: number): IPdfSearchMatch[] => {
-      return matches.filter((m) => m.pageNumber === pageNumber);
-    },
-    [matches]
-  );
-
-  const currentMatch = useMemo(() => {
-    if (currentMatchIndex >= 0 && currentMatchIndex < matches.length) {
-      return matches[currentMatchIndex];
-    }
-    return null;
-  }, [matches, currentMatchIndex]);
-
   return {
-    query,
-    setQuery,
-    isSearching,
-    matches,
-    totalMatches: matches.length,
-    currentMatchIndex,
-    currentMatch,
     isSearchOpen,
     setIsSearchOpen,
+    toggleSearch,
+    searchQuery,
+    searchResults,
+    isSearching,
+    activeMatchIndex,
+    setActiveMatchIndex,
+    handleSearch,
     nextMatch,
-    prevMatch,
-    jumpToMatch,
-    clearSearch,
-    getMatchesForPage,
+    previousMatch,
   };
 }

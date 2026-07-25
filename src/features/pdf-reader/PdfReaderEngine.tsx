@@ -8,7 +8,6 @@ import * as pdfjsLib from 'pdfjs-dist';
 import { PdfEngine } from '../../core/pdf/PdfService';
 import { HighlightService } from '../../core/highlight/HighlightService';
 import { PdfPageCanvas } from './PdfPageCanvas';
-import { IPdfSearchMatch } from '../../core/pdf/PdfSearchService';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface PdfReaderEngineProps {
@@ -19,10 +18,7 @@ interface PdfReaderEngineProps {
   autoCropMargins?: boolean;
   viewMode: 'continuous' | 'single';
   onPageChange: (page: number, totalPages: number) => void;
-  onScaleChange?: (scaleUpdater: number | ((prev: number) => number)) => void;
   initialPage?: number;
-  getMatchesForPage?: (pageNumber: number) => IPdfSearchMatch[];
-  currentMatchId?: string | null;
 }
 
 export const PdfReaderEngine: React.FC<PdfReaderEngineProps> = ({
@@ -33,10 +29,7 @@ export const PdfReaderEngine: React.FC<PdfReaderEngineProps> = ({
   autoCropMargins = true,
   viewMode,
   onPageChange,
-  onScaleChange,
   initialPage = 1,
-  getMatchesForPage,
-  currentMatchId,
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [currentPage, setCurrentPage] = useState<number>(initialPage);
@@ -72,77 +65,6 @@ export const PdfReaderEngine: React.FC<PdfReaderEngineProps> = ({
       isMounted = false;
     };
   }, [fitWidth, scale, pdfDoc, currentPage]);
-
-  // Trackpad pinch-to-zoom & Ctrl+Wheel zoom listener
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
-    const handleWheel = (e: WheelEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-        const delta = -e.deltaY * 0.003;
-        if (onScaleChange) {
-          onScaleChange((prev) => Math.min(Math.max(Number((prev + delta).toFixed(2)), 0.4), 3.0));
-        }
-      }
-    };
-
-    container.addEventListener('wheel', handleWheel, { passive: false });
-    return () => {
-      container.removeEventListener('wheel', handleWheel);
-    };
-  }, [onScaleChange]);
-
-  // Touch device 2-finger pinch-to-zoom listener
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
-    let initialDist: number | null = null;
-    let baseScale = scale;
-
-    const handleTouchStart = (e: TouchEvent) => {
-      if (e.touches.length === 2) {
-        initialDist = Math.hypot(
-          e.touches[0].clientX - e.touches[1].clientX,
-          e.touches[0].clientY - e.touches[1].clientY
-        );
-        baseScale = scale;
-      }
-    };
-
-    const handleTouchMove = (e: TouchEvent) => {
-      if (e.touches.length === 2 && initialDist && initialDist > 0) {
-        e.preventDefault();
-        const currentDist = Math.hypot(
-          e.touches[0].clientX - e.touches[1].clientX,
-          e.touches[0].clientY - e.touches[1].clientY
-        );
-        const ratio = currentDist / initialDist;
-        const targetScale = Math.min(Math.max(Number((baseScale * ratio).toFixed(2)), 0.4), 3.0);
-        if (onScaleChange) {
-          onScaleChange(targetScale);
-        }
-      }
-    };
-
-    const handleTouchEnd = (e: TouchEvent) => {
-      if (e.touches.length < 2) {
-        initialDist = null;
-      }
-    };
-
-    container.addEventListener('touchstart', handleTouchStart, { passive: true });
-    container.addEventListener('touchmove', handleTouchMove, { passive: false });
-    container.addEventListener('touchend', handleTouchEnd, { passive: true });
-
-    return () => {
-      container.removeEventListener('touchstart', handleTouchStart);
-      container.removeEventListener('touchmove', handleTouchMove);
-      container.removeEventListener('touchend', handleTouchEnd);
-    };
-  }, [scale, onScaleChange]);
 
   // Jump to initial page or restored last read page on mount
   useEffect(() => {
@@ -190,14 +112,14 @@ export const PdfReaderEngine: React.FC<PdfReaderEngineProps> = ({
     <div
       ref={scrollContainerRef}
       id="passio-pdf-scroll-chassis"
-      className="w-full h-full overflow-y-auto overflow-x-auto flex flex-col items-center custom-scrollbar relative px-2 sm:px-4 py-8 touch-pan-y min-w-0"
+      className="w-full h-full overflow-y-auto overflow-x-hidden flex flex-col items-center custom-scrollbar relative px-4 py-8 touch-pan-y"
       style={{
         backgroundColor: 'var(--color-bg-base)',
       }}
     >
       {viewMode === 'continuous' ? (
         /* Continuous Scroll View Mode */
-        <div className="flex flex-col items-center justify-center w-full mx-auto">
+        <div className="flex flex-col items-center w-full max-w-5xl">
           {Array.from({ length: numPages }, (_, i) => i + 1).map((pageNum) => (
             <PdfPageCanvas
               key={`pdf-page-${pageNum}`}
@@ -207,8 +129,6 @@ export const PdfReaderEngine: React.FC<PdfReaderEngineProps> = ({
               scale={computedScale}
               autoCropMargins={autoCropMargins}
               viewMode={viewMode}
-              searchMatches={getMatchesForPage ? getMatchesForPage(pageNum) : []}
-              currentMatchId={currentMatchId}
               onVisible={(visiblePage) => {
                 if (visiblePage !== currentPage) {
                   persistPageNumber(visiblePage);
@@ -219,7 +139,7 @@ export const PdfReaderEngine: React.FC<PdfReaderEngineProps> = ({
         </div>
       ) : (
         /* Single Page View Mode */
-        <div className="flex flex-col items-center justify-center w-full min-h-full py-6 relative mx-auto">
+        <div className="flex flex-col items-center justify-center min-h-full py-6 relative">
           <PdfPageCanvas
             key={`pdf-single-page-${currentPage}`}
             docId={docId}
@@ -228,8 +148,6 @@ export const PdfReaderEngine: React.FC<PdfReaderEngineProps> = ({
             scale={computedScale}
             autoCropMargins={autoCropMargins}
             viewMode={viewMode}
-            searchMatches={getMatchesForPage ? getMatchesForPage(currentPage) : []}
-            currentMatchId={currentMatchId}
             onVisible={() => {}}
           />
 

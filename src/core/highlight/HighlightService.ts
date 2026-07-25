@@ -45,9 +45,7 @@ class HighlightDomainService {
     pageNumber: number,
     selectedText: string,
     rects: IHighlightRect[],
-    color: HighlightColor,
-    styleType: 'highlight' | 'underline' = 'highlight',
-    note?: string
+    color: HighlightColor
   ): Promise<IHighlightFragment> {
     const now = new Date().toISOString();
     const fragment: IHighlightFragment = {
@@ -57,8 +55,6 @@ class HighlightDomainService {
       selectedText,
       rects,
       color,
-      styleType,
-      note,
       createdAt: now,
       updatedAt: now,
     };
@@ -94,37 +90,6 @@ class HighlightDomainService {
       Logger.info('HighlightService', `Removed highlight fragment [${highlightId}]`);
     } catch (err) {
       Logger.error('HighlightService', `Failed to delete highlight [${highlightId}]`, err);
-      throw err;
-    }
-  }
-
-  /**
-   * Updates an existing Knowledge Fragment (color, styleType, note)
-   */
-  async updateHighlight(
-    materialId: string,
-    highlightId: string,
-    updates: Partial<Pick<IHighlightFragment, 'color' | 'styleType' | 'note'>>
-  ): Promise<IHighlightFragment | null> {
-    const currentList = this.activeHighlights.get(materialId) || [];
-    const target = currentList.find((item) => item.id === highlightId);
-    if (!target) return null;
-
-    const updated: IHighlightFragment = {
-      ...target,
-      ...updates,
-      updatedAt: new Date().toISOString(),
-    };
-
-    try {
-      const saved = await HighlightRepository.saveHighlight(updated);
-      const newList = currentList.map((item) => (item.id === highlightId ? saved : item));
-      this.activeHighlights.set(materialId, newList);
-      this.notifyListeners();
-      Logger.info('HighlightService', `Updated highlight fragment [${highlightId}]`);
-      return saved;
-    } catch (err) {
-      Logger.error('HighlightService', `Failed to update highlight [${highlightId}]`, err);
       throw err;
     }
   }

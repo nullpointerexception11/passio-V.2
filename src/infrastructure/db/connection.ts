@@ -265,8 +265,6 @@ class TauriDatabaseService implements IDatabaseService {
         selected_text TEXT NOT NULL,
         rects_json TEXT NOT NULL,
         color TEXT NOT NULL DEFAULT 'yellow',
-        style_type TEXT NOT NULL DEFAULT 'highlight',
-        note TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
