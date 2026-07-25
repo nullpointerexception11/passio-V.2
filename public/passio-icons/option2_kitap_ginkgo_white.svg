@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <g fill="none" stroke="#FFFFFF" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Open Book Base -->
+    <path d="M 512 420 C 410 380 280 390 180 440 L 180 800 C 280 750 410 740 512 780 C 614 740 744 750 844 800 L 844 440 C 744 390 614 380 512 420 Z" stroke="#FFFFFF" stroke-width="36" fill="#FFFFFF" fill-opacity="0.05" />
+    <path d="M 512 420 L 512 780" stroke="#FFFFFF" stroke-width="32" />
+    
+    <!-- Ginkgo Leaf Above Book -->
+    <path d="M 512 360 Q 420 220 340 280 Q 280 330 380 410 Q 512 360 512 360 Q 512 360 644 410 Q 744 330 684 280 Q 604 220 512 360 Z" fill="#FFFFFF" />
+    <path d="M 512 360 L 512 180" stroke="#FFFFFF" stroke-width="24" stroke-linecap="round" />
+  </g>
+</svg>

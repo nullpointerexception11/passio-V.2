@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <g fill="none" stroke="#000000" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Ink Nib -->
+    <path d="M 512 160 C 620 340 660 500 660 620 C 660 702 594 768 512 768 C 430 768 364 702 364 620 C 364 500 404 340 512 160 Z" fill="#000000" stroke="none" />
+    <path d="M 512 190 L 512 480" stroke="#000000" stroke-width="20" />
+    <circle cx="512" cy="480" r="28" fill="#000000" stroke="none" />
+    <!-- Wave -->
+    <path d="M 200 830 C 330 780 410 880 512 830 C 614 780 694 880 824 830" stroke="#000000" stroke-width="36" fill="none" />
+    <path d="M 290 900 C 380 865 440 925 512 895 C 584 865 644 925 734 890" stroke="#000000" stroke-width="22" fill="none" opacity="0.8" />
+  </g>
+</svg>

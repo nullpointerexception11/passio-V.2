@@ -1,0 +1,40 @@
+const fs = require('fs');
+const { execSync } = require('child_process');
+
+// Pure monochrome SVG - Black symbol on transparent background
+const svgMonochromeBlack = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <g>
+    <!-- Ink Nib Body -->
+    <path d="M 512 140 
+             C 620 340 660 500 660 620 
+             C 660 702 594 768 512 768 
+             C 430 768 364 702 364 620 
+             C 364 500 404 340 512 140 Z" 
+          fill="#18181B" />
+    
+    <!-- Transparent Slit & Breather Hole -->
+    <path d="M 512 165 L 512 485" stroke="#FFFFFF" stroke-width="22" stroke-linecap="round" />
+    <circle cx="512" cy="485" r="30" fill="#FFFFFF" />
+
+    <!-- Zen Wave Lines -->
+    <path d="M 200 825 C 330 770 410 880 512 825 C 614 770 694 880 824 825" 
+          stroke="#18181B" stroke-width="42" stroke-linecap="round" fill="none" />
+    <path d="M 290 900 C 380 860 440 925 512 895 C 584 865 644 930 734 890" 
+          stroke="#18181B" stroke-width="26" stroke-linecap="round" fill="none" opacity="0.85" />
+  </g>
+</svg>`;
+
+// Pure monochrome SVG - White symbol on transparent background
+const svgMonochromeWhite = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <g>
+    <path d="M 512 140 C 620 340 660 500 660 620 C 660 702 594 768 512 768 C 430 768 364 702 364 620 C 364 500 404 340 512 140 Z" fill="#FFFFFF" />
+    <path d="M 512 165 L 512 485" stroke="#000000" stroke-width="22" stroke-linecap="round" />
+    <circle cx="512" cy="485" r="30" fill="#000000" />
+    <path d="M 200 825 C 330 770 410 880 512 825 C 614 770 694 880 824 825" stroke="#FFFFFF" stroke-width="42" stroke-linecap="round" fill="none" />
+    <path d="M 290 900 C 380 860 440 925 512 895 C 584 865 644 930 734 890" stroke="#FFFFFF" stroke-width="26" stroke-linecap="round" fill="none" opacity="0.85" />
+  </g>
+</svg>`;
+
+fs.writeFileSync('icon-black.svg', svgMonochromeBlack);
+fs.writeFileSync('icon-white.svg', svgMonochromeWhite);
+console.log('SVGs created successfully.');

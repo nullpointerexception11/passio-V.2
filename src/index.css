@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+/* Custom premium scrollbars (narrow, silent, elegant) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(140, 122, 91, 0.15); /* Soft bronze accent tinted thumb */
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(140, 122, 91, 0.3);
+}
+
+/* Custom text selection highlights */
+::selection {
+  background: var(--color-accent-muted);
+  color: var(--color-text-primary);
+}
+
+/* Base resets & premium typography defaults */
+body {
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Silent micro-animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn var(--motion-duration-normal) var(--motion-duration-standard) forwards;
+}
+
+/* Distraction free focused cursor styles */
+textarea:focus, input:focus {
+  outline: none;
+}
+
+/* PDF.js Text Layer Overlay Styles */
+.pdf-text-layer span::selection {
+  background: rgba(245, 158, 11, 0.35) !important;
+  color: transparent !important;
+}
+
+.pdf-text-layer span::-moz-selection {
+  background: rgba(245, 158, 11, 0.35) !important;
+  color: transparent !important;
+}
+

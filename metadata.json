@@ -1,0 +1,6 @@
+{
+  "name": "Passio",
+  "description": "A premium, offline-first distraction-free reading, thinking, and writing workspace.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

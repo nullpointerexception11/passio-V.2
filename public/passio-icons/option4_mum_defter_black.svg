@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <g fill="none" stroke="#18181B" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Notebook Spine & Pages -->
+    <rect x="360" y="380" width="304" height="460" rx="20" stroke="#18181B" stroke-width="36" fill="#18181B" fill-opacity="0.05" />
+    <line x1="440" y1="480" x2="600" y2="480" stroke="#18181B" stroke-width="24" />
+    <line x1="440" y1="560" x2="600" y2="560" stroke="#18181B" stroke-width="24" />
+    <line x1="440" y1="640" x2="540" y2="640" stroke="#18181B" stroke-width="24" />
+    
+    <!-- Candle Flame Top -->
+    <path d="M 512 160 C 550 220 560 270 512 320 C 464 270 474 220 512 160 Z" fill="#18181B" />
+    <line x1="512" y1="320" x2="512" y2="380" stroke="#18181B" stroke-width="20" />
+  </g>
+</svg>

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <g fill="none" stroke="#18181B" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Calligraphy Enso Circle with open gap -->
+    <path d="M 720 280 A 340 340 0 1 0 780 620" stroke="#18181B" stroke-width="60" stroke-dasharray="1000" stroke-dashoffset="0" />
+    <!-- Center Nib -->
+    <path d="M 512 300 C 580 420 600 520 600 600 C 600 650 560 690 512 690 C 464 690 424 650 424 600 C 424 520 444 420 512 300 Z" fill="#18181B" />
+    <path d="M 512 320 L 512 510" stroke="#FFFFFF" stroke-width="16" />
+    <circle cx="512" cy="510" r="20" fill="#FFFFFF" stroke="none" />
+  </g>
+</svg>
