@@ -101,6 +101,17 @@ export function useLibrary() {
     navigate('/');
   }, [navigate]);
 
+  const handleDeleteDocument = useCallback(async (docId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await MaterialService.deleteDocument(docId);
+      setCustomPdfs((prev) => prev.filter((p) => p.docId !== docId));
+      Logger.info('useLibrary', `Deleted document [${docId}]`);
+    } catch (err) {
+      Logger.error('useLibrary', `Failed to delete document [${docId}]`, err);
+    }
+  }, []);
+
   return {
     sampleMaterials,
     customPdfs,
@@ -112,6 +123,7 @@ export function useLibrary() {
     handleCustomFileLoaded,
     handleOpenUserDocument,
     handleSelectKnowledgeItem,
+    handleDeleteDocument,
     closeSession,
     goToHome,
     setActiveSession,

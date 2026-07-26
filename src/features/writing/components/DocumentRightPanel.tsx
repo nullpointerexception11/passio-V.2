@@ -157,7 +157,9 @@ export const DocumentRightPanel: React.FC<DocumentRightPanelProps> = ({
                     </button>
                     {onRemoveReference && (
                       <button
-                        onClick={() => onRemoveReference(ref.id)}
+                        onClick={() => {
+                          onRemoveReference(ref.id);
+                        }}
                         className="p-1.5 rounded hover:bg-black/5 dark:hover:bg-white/5 text-red-400 cursor-pointer"
                         title="Kaynağı Kaldır"
                       >

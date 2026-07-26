@@ -32,7 +32,7 @@ export function usePdfReader({
 
   // PDF View Settings
   const [scale, setScale] = useState<number>(1.0);
-  const [fitWidth, setFitWidth] = useState<boolean>(true);
+  const [fitMode, setFitMode] = useState<'width' | 'page' | 'none'>('width');
   const [autoCropMargins, setAutoCropMargins] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<'continuous' | 'single'>('continuous');
   const [showSettings, setShowSettings] = useState<boolean>(false);
@@ -112,17 +112,34 @@ export function usePdfReader({
   }, [onClose, showSettings, showNoteMenu, showNoteDialog, showSearchNoteDialog]);
 
   const handleZoomIn = useCallback(() => {
-    setFitWidth(false);
+    setFitMode('none');
     setScale((prev) => Math.min(prev + 0.15, 2.5));
   }, []);
 
   const handleZoomOut = useCallback(() => {
-    setFitWidth(false);
+    setFitMode('none');
     setScale((prev) => Math.max(prev - 0.15, 0.5));
   }, []);
 
   const toggleFitWidth = useCallback(() => {
-    setFitWidth((prev) => !prev);
+    setFitMode((prev) => {
+      const next = prev === 'width' ? 'none' : 'width';
+      if (next === 'width') {
+        const elem = document.getElementById('passio-pdf-fullscreen-reader');
+        if (elem && elem.requestFullscreen) {
+          elem.requestFullscreen().catch(() => {});
+        }
+      } else {
+        if (document.fullscreenElement && document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        }
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleFitPage = useCallback(() => {
+    setFitMode((prev) => (prev === 'page' ? 'none' : 'page'));
   }, []);
 
   const toggleAutoCropMargins = useCallback(() => {
@@ -174,7 +191,8 @@ export function usePdfReader({
     currentPage,
     totalPages,
     scale,
-    fitWidth,
+    fitMode,
+    fitWidth: fitMode === 'width',
     autoCropMargins,
     viewMode,
     showSettings,
@@ -190,6 +208,7 @@ export function usePdfReader({
     handleZoomIn,
     handleZoomOut,
     toggleFitWidth,
+    toggleFitPage,
     toggleAutoCropMargins,
     setViewMode,
     handleOpenNewNote,

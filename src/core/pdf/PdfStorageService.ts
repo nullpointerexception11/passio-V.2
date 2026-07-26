@@ -100,4 +100,18 @@ export class PdfStorageService {
       return null;
     }
   }
+
+  static async deletePdfFile(docId: string): Promise<void> {
+    try {
+      const db = await this.openIDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('pdfs', 'readwrite');
+        tx.objectStore('pdfs').delete(docId);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    } catch (e) {
+      Logger.error('PdfStorageService', 'IndexedDB delete failed', e);
+    }
+  }
 }

@@ -15,7 +15,7 @@ interface PdfReaderEngineProps {
   docId: string;
   pdfDoc: pdfjsLib.PDFDocumentProxy;
   scale: number;
-  fitWidth: boolean;
+  fitMode: 'width' | 'page' | 'none';
   autoCropMargins?: boolean;
   viewMode: 'continuous' | 'single';
   onPageChange: (page: number, totalPages: number) => void;
@@ -26,7 +26,7 @@ export const PdfReaderEngine: React.FC<PdfReaderEngineProps> = ({
   docId,
   pdfDoc,
   scale,
-  fitWidth,
+  fitMode,
   autoCropMargins = true,
   viewMode,
   onPageChange,
@@ -45,9 +45,9 @@ export const PdfReaderEngine: React.FC<PdfReaderEngineProps> = ({
     HighlightService.loadHighlights(docId);
   }, [docId]);
 
-  // Handle Fit to Width scale calculation
+  // Handle Fit to Width / Fit to Page scale calculation
   useEffect(() => {
-    if (!fitWidth || !scrollContainerRef.current) {
+    if (fitMode === 'none' || !scrollContainerRef.current) {
       setComputedScale(scale);
       return;
     }
@@ -56,19 +56,29 @@ export const PdfReaderEngine: React.FC<PdfReaderEngineProps> = ({
     pdfDoc.getPage(currentPage).then((page) => {
       if (!isMounted || !scrollContainerRef.current) return;
       const viewport = page.getViewport({ scale: 1.0 });
-      // Restrain container width for optimal centered reading density (max 850px)
-      const availableWidth = scrollContainerRef.current.clientWidth - 48;
-      const containerWidth = Math.min(availableWidth, 850);
-      if (containerWidth > 0 && viewport.width > 0) {
-        const fitScale = containerWidth / viewport.width;
-        setComputedScale(Math.min(Math.max(fitScale, 0.6), 2.2));
+      const containerWidth = scrollContainerRef.current.clientWidth - 48;
+      const containerHeight = scrollContainerRef.current.clientHeight - 48;
+
+      if (fitMode === 'width') {
+        const availableWidth = Math.max(scrollContainerRef.current.clientWidth, 200);
+        if (availableWidth > 0 && viewport.width > 0) {
+          const fitScale = availableWidth / viewport.width;
+          setComputedScale(Math.min(Math.max(fitScale, 0.4), 4.0));
+        }
+      } else if (fitMode === 'page') {
+        const scaleX = containerWidth / viewport.width;
+        const scaleY = containerHeight / viewport.height;
+        const fitScale = Math.min(scaleX, scaleY);
+        if (fitScale > 0) {
+          setComputedScale(Math.min(Math.max(fitScale, 0.4), 3.0));
+        }
       }
     });
 
     return () => {
       isMounted = false;
     };
-  }, [fitWidth, scale, pdfDoc, currentPage]);
+  }, [fitMode, scale, pdfDoc, currentPage]);
 
   // Jump to initial page or restored last read page on mount
   useEffect(() => {
@@ -164,7 +174,7 @@ export const PdfReaderEngine: React.FC<PdfReaderEngineProps> = ({
           itemContent={(index) => {
             const pageNum = index + 1;
             return (
-              <div key={`pdf-page-wrapper-${pageNum}`} className="flex justify-center w-full py-4 px-4">
+              <div key={`pdf-page-wrapper-${pageNum}`} className={`flex justify-center w-full py-4 ${fitMode === 'width' ? 'px-0' : 'px-4'}`}>
                 <PdfPageCanvas
                   docId={docId}
                   pdfDoc={pdfDoc}

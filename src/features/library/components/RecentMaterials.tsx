@@ -4,15 +4,16 @@
  */
 
 import React from 'react';
-import { HardDrive, BookOpen, Eye } from 'lucide-react';
+import { HardDrive, BookOpen, Eye, Trash2 } from 'lucide-react';
 import { IDocumentMetadata } from '../types/material.types';
 
 interface RecentMaterialsProps {
   customPdfs: IDocumentMetadata[];
   onSelect: (metadata: IDocumentMetadata) => void;
+  onDelete: (docId: string, e: React.MouseEvent) => void;
 }
 
-export const RecentMaterials: React.FC<RecentMaterialsProps> = ({ customPdfs, onSelect }) => {
+export const RecentMaterials: React.FC<RecentMaterialsProps> = ({ customPdfs, onSelect, onDelete }) => {
   if (customPdfs.length === 0) return null;
 
   return (
@@ -31,8 +32,8 @@ export const RecentMaterials: React.FC<RecentMaterialsProps> = ({ customPdfs, on
               borderColor: 'var(--color-border-subtle)',
             }}
           >
-            <div className="flex items-center gap-3.5 truncate">
-              <div className="p-2.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 group-hover:scale-105 transition-transform">
+            <div className="flex items-center gap-3.5 truncate pr-2">
+              <div className="p-2.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 group-hover:scale-105 transition-transform shrink-0">
                 <BookOpen className="w-4 h-4" />
               </div>
               <div className="flex flex-col truncate">
@@ -42,10 +43,19 @@ export const RecentMaterials: React.FC<RecentMaterialsProps> = ({ customPdfs, on
                 <span className="text-[10px] font-mono opacity-50 tracking-wide">Yerel Cihaz Dosyası • PDF</span>
               </div>
             </div>
-            <button className="px-3 py-1.5 rounded-lg border text-xs font-mono flex items-center gap-1.5 opacity-80 group-hover:opacity-100 group-hover:bg-amber-500 group-hover:text-white group-hover:border-amber-500 transition-all cursor-pointer">
-              <Eye className="w-3.5 h-3.5" />
-              <span>Oku</span>
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              <button 
+                onClick={(e) => onDelete(pdf.docId, e)}
+                className="p-2 rounded-lg border text-red-500 hover:bg-red-500/10 border-red-500/20 transition-all cursor-pointer"
+                title="Belgeyi Sil"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+              <button className="px-3 py-1.5 rounded-lg border text-xs font-mono flex items-center gap-1.5 opacity-80 group-hover:opacity-100 group-hover:bg-amber-500 group-hover:text-white group-hover:border-amber-500 transition-all cursor-pointer">
+                <Eye className="w-3.5 h-3.5" />
+                <span>Oku</span>
+              </button>
+            </div>
           </div>
         ))}
       </div>

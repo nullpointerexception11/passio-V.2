@@ -97,6 +97,15 @@ export function useWritingEditor(
     [notebook.metadata.id, contentText, handleContentChange]
   );
 
+  // Remove reference handler
+  const handleRemoveReference = useCallback(
+    (referenceId: string) => {
+      WritingService.removeKnowledgeReference(notebook.metadata.id, referenceId);
+      setReferences(WritingService.getNotebookReferences(notebook.metadata.id));
+    },
+    [notebook.metadata.id]
+  );
+
   // Settings update handler
   const handleSettingsChange = useCallback(
     async (newSettingsPartial: Partial<INotebookSettings>) => {
@@ -133,6 +142,7 @@ export function useWritingEditor(
     setIsSettingsOpen,
     handleContentChange,
     handleInsertKnowledgeItem,
+    handleRemoveReference,
     handleSettingsChange,
   };
 }

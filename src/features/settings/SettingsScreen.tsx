@@ -19,10 +19,8 @@ export const SettingsScreen: React.FC = () => {
   const [logs, setLogs] = useState<string>('');
 
   const handleWipePin = async () => {
-    if (confirm('Güvenlik PIN ayarını sıfırlamak istediğinize emin misiniz?')) {
-      await Security.clearPinSettings();
-      window.location.reload();
-    }
+    await Security.clearPinSettings();
+    window.location.reload();
   };
 
   const handleLoadLogs = () => {

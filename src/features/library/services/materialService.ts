@@ -85,4 +85,16 @@ export class MaterialService {
       buffer,
     };
   }
+
+  /**
+  * Deletes a custom uploaded document and its stored PDF file
+  */
+  static async deleteDocument(docId: string): Promise<void> {
+    Logger.info('MaterialService', `Deleting custom document [${docId}]`);
+    await PdfStorageService.deletePdfFile(docId);
+    await db.delete('documents', { id: docId });
+    await db.delete('reading_notes', { material_id: docId });
+    await db.delete('highlights', { material_id: docId });
+    await db.delete('document_collections', { document_id: docId });
+  }
 }

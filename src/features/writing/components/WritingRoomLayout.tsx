@@ -43,6 +43,7 @@ export const WritingRoomLayout: React.FC<WritingRoomLayoutProps> = ({
     setIsSettingsOpen,
     handleContentChange,
     handleInsertKnowledgeItem,
+    handleRemoveReference,
     handleSettingsChange,
   } = useWritingEditor(notebook, onNotebookUpdated);
 
@@ -115,6 +116,7 @@ export const WritingRoomLayout: React.FC<WritingRoomLayoutProps> = ({
           onClose={() => setIsRightPanelOpen(false)}
           onOpenSettings={() => setIsSettingsOpen(true)}
           onNavigateToSource={(matId, page) => handleNavigateToSource(matId, page)}
+          onRemoveReference={handleRemoveReference}
         />
       </div>
 

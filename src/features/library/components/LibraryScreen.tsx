@@ -26,6 +26,7 @@ export const LibraryScreen: React.FC = () => {
     handleCustomFileLoaded,
     handleOpenUserDocument,
     handleSelectKnowledgeItem,
+    handleDeleteDocument,
     closeSession,
     goToHome,
     setActiveSession,
@@ -62,7 +63,11 @@ export const LibraryScreen: React.FC = () => {
         ) : (
           <>
             {/* Custom Uploaded Local Materials */}
-            <RecentMaterials customPdfs={customPdfs} onSelect={handleOpenUserDocument} />
+            <RecentMaterials 
+              customPdfs={customPdfs} 
+              onSelect={handleOpenUserDocument} 
+              onDelete={handleDeleteDocument} 
+            />
 
             {/* Curated Sample Materials Collection */}
             <SampleMaterials

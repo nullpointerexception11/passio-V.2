@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Book, Calendar, ChevronRight, Moon, Sun } from 'lucide-react';
+import { ArrowLeft, Plus, Book, Calendar, ChevronRight, Moon, Sun, Trash2 } from 'lucide-react';
 import { useTheme } from '../../core/theme/ThemeContext';
 import { Logger } from '../../core/logger/Logger';
 import { INotebook, NotebookType, NOTEBOOK_TYPE_LABELS } from '../../core/notebooks/NotebookModel';
@@ -52,6 +52,17 @@ export const FocusScreen: React.FC = () => {
       setActiveNotebook(created);
     } catch (err) {
       Logger.error('FocusScreen', 'Error creating new notebook', err);
+    }
+  };
+
+  const handleDeleteNotebook = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await NotebookService.deleteNotebook(id);
+      setNotebooks(prev => prev.filter(nb => nb.metadata.id !== id));
+      Logger.info('FocusScreen', `Deleted notebook [${id}]`);
+    } catch (err) {
+      Logger.error('FocusScreen', `Failed to delete notebook [${id}]`, err);
     }
   };
 
@@ -218,9 +229,16 @@ export const FocusScreen: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* Son Düzenlenme Tarihi */}
-                  <div className="col-span-3 sm:col-span-3 font-mono text-[11px] opacity-60 text-right flex items-center justify-end gap-2">
+                  {/* Son Düzenlenme Tarihi & Delete */}
+                  <div className="col-span-3 sm:col-span-3 font-mono text-[11px] opacity-60 text-right flex items-center justify-end gap-3">
                     <span className="hidden sm:inline">{formatDate(nb.metadata.updatedAt)}</span>
+                    <button
+                      onClick={(e) => handleDeleteNotebook(nb.metadata.id, e)}
+                      className="p-1.5 rounded-lg text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer opacity-60 group-hover:opacity-100"
+                      title="Defteri Sil"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                     <ChevronRight className="w-4 h-4 opacity-40 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
                   </div>
                 </div>

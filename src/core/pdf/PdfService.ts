@@ -152,10 +152,9 @@ class PdfService {
       const renderContext = {
         canvasContext: ctx,
         viewport,
-        canvas,
       };
 
-      const renderTask = page.render(renderContext);
+      const renderTask = page.render(renderContext as any);
       this.activeRenderTasks.set(taskKey, renderTask);
 
       await renderTask.promise;

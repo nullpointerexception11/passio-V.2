@@ -43,6 +43,14 @@ export class WritingService {
   }
 
   /**
+   * Removes a registered reference from a notebook.
+   */
+  static removeKnowledgeReference(notebookId: string, referenceId: string): void {
+    ReferenceManager.removeReference(notebookId, referenceId);
+    Logger.info('WritingService', `Removed reference [${referenceId}] from notebook [${notebookId}]`);
+  }
+
+  /**
    * Auto-saves notebook content.
    */
   static async autoSaveContent(notebookId: string, newText: string) {

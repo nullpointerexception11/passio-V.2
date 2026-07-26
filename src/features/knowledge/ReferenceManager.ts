@@ -79,6 +79,14 @@ class ReferenceManagerService {
   public getReferencesForNotebook(notebookId: string): INotebookReference[] {
     return this.getReferences(notebookId);
   }
+
+  public removeReference(notebookId: string, referenceId: string): void {
+    const refs = this.referencesMap.get(notebookId) || [];
+    const updated = refs.filter(r => r.id !== referenceId);
+    this.referencesMap.set(notebookId, updated);
+    this.saveToStorage();
+    Logger.info('ReferenceManager', `Removed reference [${referenceId}] for notebook [${notebookId}]`);
+  }
 }
 
 export const ReferenceManager = new ReferenceManagerService();

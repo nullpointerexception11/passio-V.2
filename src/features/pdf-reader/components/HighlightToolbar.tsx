@@ -148,7 +148,9 @@ export const HighlightToolbar: React.FC<HighlightToolbarProps> = ({
         {isExistingHighlight && onDeleteHighlight && (
           <button
             type="button"
-            onClick={onDeleteHighlight}
+            onClick={() => {
+              onDeleteHighlight();
+            }}
             title="Vurguyu Sil"
             className="p-1.5 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/20 transition-colors"
           >

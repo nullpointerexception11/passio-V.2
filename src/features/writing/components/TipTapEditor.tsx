@@ -8,6 +8,7 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import { INotebookSettings } from '../../../core/notebooks/NotebookModel';
+import { WritingBubbleMenu } from './WritingBubbleMenu';
 
 interface TipTapEditorProps {
   initialContent: string;
@@ -118,6 +119,8 @@ export const TipTapEditor: React.FC<TipTapEditorProps> = ({
 
   return (
     <div className="w-full flex flex-col items-center h-full overflow-y-auto px-4 pt-16 sm:pt-20 pb-16">
+      <WritingBubbleMenu editor={editor} />
+
       {/* Editor Main Canvas Container */}
       <div
         onDragOver={handleDragOver}

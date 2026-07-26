@@ -58,6 +58,7 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
     currentPage,
     totalPages,
     scale,
+    fitMode,
     fitWidth,
     autoCropMargins,
     viewMode,
@@ -74,6 +75,7 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
     handleZoomIn,
     handleZoomOut,
     toggleFitWidth,
+    toggleFitPage,
     toggleAutoCropMargins,
     setViewMode,
     handleOpenNewNote,
@@ -336,6 +338,21 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
                           </button>
 
                           <button
+                            onClick={toggleFitPage}
+                            className="flex items-center justify-between w-full p-2 rounded-lg border text-left transition-all hover:bg-stone-50 dark:hover:bg-stone-800/30 cursor-pointer"
+                            style={{ borderColor: 'var(--color-border-subtle)' }}
+                          >
+                            <span className="text-stone-700 dark:text-stone-300">Sayfaya Sığdır (Tüm Ekran)</span>
+                            <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${
+                              fitMode === 'page'
+                                ? 'bg-amber-500 border-amber-500 text-white' 
+                                : 'border-stone-300 dark:border-stone-600'
+                            }`}>
+                              {fitMode === 'page' && <Check className="w-3 h-3 stroke-[3]" />}
+                            </div>
+                          </button>
+
+                          <button
                             onClick={toggleAutoCropMargins}
                             className="flex items-center justify-between w-full p-2 rounded-lg border text-left transition-all hover:bg-stone-50 dark:hover:bg-stone-800/30 cursor-pointer"
                             style={{ borderColor: 'var(--color-border-subtle)' }}
@@ -445,7 +462,7 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
               docId={docId}
               pdfDoc={pdfDoc}
               scale={scale}
-              fitWidth={fitWidth}
+              fitMode={fitMode}
               autoCropMargins={autoCropMargins}
               viewMode={viewMode}
               initialPage={lastReadPage}
@@ -481,6 +498,10 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
                   setShowNoteDialog(false);
                 }}
                 onClose={() => {
+                  setShowNoteDialog(false);
+                }}
+                onDelete={async (id) => {
+                  await handleDeleteNote(id);
                   setShowNoteDialog(false);
                 }}
               />

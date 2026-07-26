@@ -4,19 +4,21 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { X, Tag } from 'lucide-react';
+import { X, Tag, Trash2 } from 'lucide-react';
 import { IReadingNote } from '../../entities/note/ReadingNoteModel';
 
 interface ReadingNoteDialogProps {
   note?: IReadingNote | null;
   onSave: (title: string, content: string, tags: string[], existingId?: string) => void;
   onClose: () => void;
+  onDelete?: (id: string) => void;
 }
 
 export const ReadingNoteDialog: React.FC<ReadingNoteDialogProps> = ({
   note,
   onSave,
   onClose,
+  onDelete,
 }) => {
   const [title, setTitle] = useState<string>('');
   const [content, setContent] = useState<string>('');
@@ -163,27 +165,41 @@ export const ReadingNoteDialog: React.FC<ReadingNoteDialogProps> = ({
         </div>
 
         <div 
-          className="pt-3 border-t flex items-center justify-end gap-2 shrink-0 mt-auto"
+          className="pt-3 border-t flex items-center justify-between gap-2 shrink-0 mt-auto"
           style={{ borderColor: 'var(--color-border-subtle)' }}
         >
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-3.5 py-1.5 rounded-lg border text-xs font-mono transition-all cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 active:scale-95"
-            style={{
-              borderColor: 'var(--color-border-subtle)',
-              color: 'var(--color-text-primary)',
-            }}
-          >
-            İptal
-          </button>
-          <button
-            type="submit"
-            disabled={!content.trim()}
-            className="px-4 py-1.5 rounded-lg text-xs font-mono transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 bg-amber-600 hover:bg-amber-700 text-white shadow-sm"
-          >
-            Kaydet
-          </button>
+          <div>
+            {note && onDelete && (
+              <button
+                type="button"
+                onClick={() => onDelete(note.id)}
+                className="p-1.5 rounded-lg border text-red-500 hover:bg-red-500/10 transition-all cursor-pointer border-transparent hover:border-red-500/20"
+                title="Notu Sil"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-3.5 py-1.5 rounded-lg border text-xs font-mono transition-all cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 active:scale-95"
+              style={{
+                borderColor: 'var(--color-border-subtle)',
+                color: 'var(--color-text-primary)',
+              }}
+            >
+              İptal
+            </button>
+            <button
+              type="submit"
+              disabled={!content.trim()}
+              className="px-4 py-1.5 rounded-lg text-xs font-mono transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 bg-amber-600 hover:bg-amber-700 text-white shadow-sm"
+            >
+              Kaydet
+            </button>
+          </div>
         </div>
       </form>
     </div>
