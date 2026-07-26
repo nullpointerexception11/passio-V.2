@@ -1,4 +1,5 @@
 import * as pdfjsLib from 'pdfjs-dist';
+import { PdfEngine } from './PdfService';
 
 export interface SearchResultMatch {
   pageNumber: number;
@@ -14,6 +15,7 @@ export class PdfSearchService {
   static async searchDocument(
     pdfDoc: pdfjsLib.PDFDocumentProxy,
     query: string,
+    signal?: AbortSignal,
     onProgress?: (progress: number) => void
   ): Promise<SearchResultMatch[]> {
     if (!query || query.trim().length === 0 || !pdfDoc) {
@@ -25,17 +27,16 @@ export class PdfSearchService {
     const totalPages = pdfDoc.numPages;
 
     for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+      if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
       try {
         const page = await pdfDoc.getPage(pageNum);
-        const textContent = await page.getTextContent();
+        const textContent = await PdfEngine.getCachedTextContent(page);
         
         let fullPageText = '';
-        const itemsWithPos: { text: string; transform: number[] }[] = [];
-
+        
         for (const item of textContent.items as any[]) {
           if ('str' in item && item.str) {
             fullPageText += item.str + ' ';
-            itemsWithPos.push({ text: item.str, transform: item.transform });
           }
         }
 
@@ -62,6 +63,10 @@ export class PdfSearchService {
           onProgress(Math.round((pageNum / totalPages) * 100));
         }
       } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          console.log('[PdfSearchService] Search aborted');
+          throw err;
+        }
         console.warn(`[PdfSearchService] Error searching page ${pageNum}:`, err);
       }
     }

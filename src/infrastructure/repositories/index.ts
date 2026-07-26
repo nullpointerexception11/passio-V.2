@@ -5,5 +5,5 @@
 
 export * from './MaterialRepository';
 export { HighlightRepository } from '../../core/highlight/HighlightRepository';
-export { ReadingNoteRepository } from '../../features/notes/ReadingNoteRepository';
+export { ReadingNoteRepository } from '../../core/notes/ReadingNoteRepository';
 export { KnowledgeBridgeRepository } from '../../features/knowledge/KnowledgeBridgeRepository';

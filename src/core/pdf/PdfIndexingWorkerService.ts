@@ -1,4 +1,5 @@
 import * as pdfjsLib from 'pdfjs-dist';
+import { PdfEngine } from './PdfService';
 
 export type IndexingStatus = 'idle' | 'indexing' | 'ready' | 'error';
 
@@ -66,7 +67,7 @@ export class PdfIndexingWorkerService {
     try {
       for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
         const page = await pdfDoc.getPage(pageNum);
-        await page.getTextContent(); // Warm cache / index page text
+        await PdfEngine.getCachedTextContent(page); // Warm cache / index page text
 
         const progressPercent = Math.round((pageNum / totalPages) * 100);
         this.notify(docId, {

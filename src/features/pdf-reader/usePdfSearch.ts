@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { PdfSearchService, SearchResultMatch } from '../../core/pdf/PdfSearchService';
 import { PdfIndexingWorkerService } from '../../core/pdf/PdfIndexingWorkerService';
@@ -9,6 +9,7 @@ export function usePdfSearch(docId: string, pdfDoc: pdfjsLib.PDFDocumentProxy | 
   const [searchResults, setSearchResults] = useState<SearchResultMatch[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [activeMatchIndex, setActiveMatchIndex] = useState(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Trigger background indexing when document is loaded
   useEffect(() => {
@@ -26,20 +27,31 @@ export function usePdfSearch(docId: string, pdfDoc: pdfjsLib.PDFDocumentProxy | 
         return;
       }
 
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      abortControllerRef.current = new AbortController();
+
       setIsSearching(true);
       try {
-        const matches = await PdfSearchService.searchDocument(pdfDoc, query);
+        const matches = await PdfSearchService.searchDocument(pdfDoc, query, abortControllerRef.current.signal);
         setSearchResults(matches);
         setActiveMatchIndex(0);
       } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') {
+            return;
+        }
         console.warn('[usePdfSearch] Search error:', err);
         setSearchResults([]);
       } finally {
-        setIsSearching(false);
+        if (!abortControllerRef.current.signal.aborted) {
+            setIsSearching(false);
+        }
       }
     },
     [pdfDoc]
   );
+
 
   const nextMatch = useCallback(() => {
     if (searchResults.length === 0) return;

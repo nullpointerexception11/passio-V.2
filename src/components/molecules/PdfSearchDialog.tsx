@@ -54,12 +54,21 @@ export const PdfSearchDialog: React.FC<PdfSearchDialogProps> = ({
     }
   };
 
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setQuery(val);
-    if (val.trim().length >= 2) {
-      onSearch(val);
+
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
     }
+
+    debounceTimer.current = setTimeout(() => {
+      if (val.trim().length >= 2) {
+        onSearch(val);
+      }
+    }, 250);
   };
 
   return (

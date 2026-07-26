@@ -7,6 +7,7 @@ import React, { useEffect, useState } from 'react';
 import { ThemeProvider } from './core/theme/ThemeContext';
 import { SessionProvider } from './core/session/SessionContext';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { ToastProvider } from './components/common/ToastContext';
 import { AppRoutes } from './routes/AppRoutes';
 import { PinLockScreen } from './components/organisms/PinLockScreen';
 import { SplashScreen } from './components/organisms/SplashScreen';
@@ -89,15 +90,17 @@ export default function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider>
-        <SessionProvider lockSession={handleLock}>
-          {!isUnlocked ? (
-            <PinLockScreen onUnlock={handleUnlock} />
-          ) : showSplash ? (
-            <SplashScreen onComplete={() => setShowSplash(false)} />
-          ) : (
-            <AppRoutes />
-          )}
-        </SessionProvider>
+        <ToastProvider>
+          <SessionProvider lockSession={handleLock}>
+            {!isUnlocked ? (
+              <PinLockScreen onUnlock={handleUnlock} />
+            ) : showSplash ? (
+              <SplashScreen onComplete={() => setShowSplash(false)} />
+            ) : (
+              <AppRoutes />
+            )}
+          </SessionProvider>
+        </ToastProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );

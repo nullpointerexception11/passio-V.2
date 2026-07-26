@@ -6,6 +6,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { PdfEngine } from '../../core/pdf/PdfService';
+import { Logger } from '../../core/logger/Logger';
 import { HighlightService } from '../../core/highlight/HighlightService';
 import { HighlightEngine, ISelectionResult } from '../../core/highlight/HighlightEngine';
 import { IHighlightFragment, HighlightColor } from '../../core/highlight/HighlightModel';
@@ -48,8 +49,6 @@ interface PdfPageCanvasProps {
   viewMode?: 'continuous' | 'single';
   onVisible?: (pageNumber: number) => void;
 }
-
-const pageTextContentCache = new WeakMap<object, any>();
 
 export const PdfPageCanvas: React.FC<PdfPageCanvasProps> = React.memo(({
   docId,
@@ -201,11 +200,7 @@ export const PdfPageCanvas: React.FC<PdfPageCanvasProps> = React.memo(({
       setAspectRatio(viewport.width / viewport.height);
 
       try {
-        let textContent = pageTextContentCache.get(page);
-        if (!textContent) {
-          textContent = await page.getTextContent();
-          pageTextContentCache.set(page, textContent);
-        }
+        const textContent = await PdfEngine.getCachedTextContent(page);
         if (textContent && textContent.items && textContent.items.length > 0) {
           let minX = viewport.width;
           let maxX = 0;
@@ -262,7 +257,17 @@ export const PdfPageCanvas: React.FC<PdfPageCanvasProps> = React.memo(({
         canvasRef.current.width = 0;
         canvasRef.current.height = 0;
       }
-      setIsRendered(false);
+
+      // Cleanup page resources only if previously rendered
+      if (isRendered) {
+        PdfEngine.cancelPageRender(docId, pageNumber);
+        pdfDoc.getPage(pageNumber).then(page => {
+          page.cleanup();
+        }).catch(err => {
+          Logger.warn('PdfPageCanvas', `Failed to cleanup page ${pageNumber}`, err);
+        });
+        setIsRendered(false);
+      }
       return;
     }
 
@@ -278,7 +283,7 @@ export const PdfPageCanvas: React.FC<PdfPageCanvasProps> = React.memo(({
     return () => {
       isSubscribed = false;
     };
-  }, [pdfDoc, pageNumber, scale, isVisible]);
+  }, [pdfDoc, pageNumber, scale, isVisible, isRendered]);
 
   const handleSelectColor = async (color: HighlightColor, note?: string) => {
     try {

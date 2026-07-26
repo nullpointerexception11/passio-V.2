@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
+import { PdfEngine } from '../../core/pdf/PdfService';
 import { Logger } from '../../core/logger/Logger';
 
 interface PdfTextLayerOverlayProps {
@@ -23,8 +24,35 @@ export const PdfTextLayerOverlay: React.FC<PdfTextLayerOverlayProps> = React.mem
   containerHeight,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [textContent, setTextContent] = useState<any | null>(null);
 
+  // Effect 1: Fetch and memoize text content
   useEffect(() => {
+    let isCancelled = false;
+    setTextContent(null);
+
+    async function fetchTextContent() {
+      try {
+        const page = await pdfDoc.getPage(pageNumber);
+        if (isCancelled) return;
+        const content = await PdfEngine.getCachedTextContent(page);
+        if (isCancelled) return;
+        setTextContent(content);
+      } catch (err) {
+        if (!isCancelled) {
+          Logger.error('PdfTextLayerOverlay', `Failed to fetch TextContent for page ${pageNumber}`, err);
+        }
+      }
+    }
+
+    fetchTextContent();
+    return () => { isCancelled = true; };
+  }, [pdfDoc, pageNumber]);
+
+  // Effect 2: Render text layer
+  useEffect(() => {
+    if (!textContent || !textContent.items || !containerRef.current) return;
+
     let textLayerInstance: pdfjsLib.TextLayer | null = null;
     let isCancelled = false;
 
@@ -39,13 +67,12 @@ export const PdfTextLayerOverlay: React.FC<PdfTextLayerOverlayProps> = React.mem
         if (isCancelled) return;
 
         const viewport = page.getViewport({ scale });
-        const textContent = await page.getTextContent();
         if (isCancelled || !containerRef.current) return;
 
         containerRef.current.style.setProperty('--scale-factor', `${scale}`);
 
         textLayerInstance = new pdfjsLib.TextLayer({
-          textContentSource: textContent,
+          textContentSource: textContent!,
           container: containerRef.current,
           viewport,
         });
@@ -70,7 +97,7 @@ export const PdfTextLayerOverlay: React.FC<PdfTextLayerOverlayProps> = React.mem
         }
       }
     };
-  }, [pdfDoc, pageNumber, scale]);
+  }, [textContent, scale, pdfDoc, pageNumber]);
 
   return (
     <div

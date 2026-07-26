@@ -29,11 +29,21 @@ export interface IPdfPageRenderOptions {
 }
 
 class PdfService {
+  private textContentCache: WeakMap<pdfjsLib.PDFPageProxy, Promise<any>> = new WeakMap();
   private activeRenderTasks: Map<string, pdfjsLib.RenderTask> = new Map();
 
   /**
-   * Initializes and loads a PDF document from URL or ArrayBuffer
+   * Retrieves text content for a page, with caching.
    */
+  async getCachedTextContent(page: pdfjsLib.PDFPageProxy): Promise<any> {
+    if (this.textContentCache.has(page)) {
+      return this.textContentCache.get(page)!;
+    }
+
+    const textContentPromise = page.getTextContent();
+    this.textContentCache.set(page, textContentPromise);
+    return textContentPromise;
+  }
   async loadDocument(urlOrBuffer: string | ArrayBuffer): Promise<pdfjsLib.PDFDocumentProxy> {
     try {
       Logger.info('PdfService', 'Loading PDF document resource...');
@@ -121,15 +131,7 @@ class PdfService {
     const effectiveDocId = docId || (pdfDoc as any).fingerprint || 'doc';
     const taskKey = `${effectiveDocId}-${pageNumber}`;
 
-    // Cancel any existing render task on this composite key to prevent canvas race conditions
-    if (this.activeRenderTasks.has(taskKey)) {
-      try {
-        this.activeRenderTasks.get(taskKey)?.cancel();
-      } catch {
-        // Ignore task cancellation error
-      }
-      this.activeRenderTasks.delete(taskKey);
-    }
+    this.cancelPageRender(effectiveDocId, pageNumber);
 
     try {
       const page = await pdfDoc.getPage(pageNumber);
@@ -165,6 +167,21 @@ class PdfService {
       } else {
         Logger.error('PdfService', `Error rendering page ${pageNumber} of [${effectiveDocId}]:`, err);
       }
+    }
+  }
+
+  /**
+   * Cancels a specific pending render task.
+   */
+  cancelPageRender(docId: string, pageNumber: number) {
+    const taskKey = `${docId}-${pageNumber}`;
+    if (this.activeRenderTasks.has(taskKey)) {
+      try {
+        this.activeRenderTasks.get(taskKey)?.cancel();
+      } catch {
+        // Ignore task cancellation error
+      }
+      this.activeRenderTasks.delete(taskKey);
     }
   }
 

@@ -7,6 +7,7 @@ import { useRef, useCallback } from 'react';
 import { MaterialService } from '../services/materialService';
 import { IDocumentMetadata, IMaterialActiveSession } from '../types/material.types';
 import { Logger } from '../../../core/logger/Logger';
+import { useToast } from '../../../components/common/ToastContext';
 
 interface UseFileImportProps {
   onFileLoaded: (metadata: IDocumentMetadata) => void;
@@ -15,6 +16,7 @@ interface UseFileImportProps {
 
 export function useFileImport({ onFileLoaded, onError }: UseFileImportProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const { addToast } = useToast();
 
   const triggerFilePicker = useCallback(() => {
     fileInputRef.current?.click();
@@ -27,9 +29,6 @@ export function useFileImport({ onFileLoaded, onError }: UseFileImportProps) {
 
       try {
         const session = await MaterialService.processUploadedFile(file);
-        // We only have the metadata now after update, but let's see what MaterialService returns
-        // MaterialService.processUploadedFile returns IMaterialActiveSession.
-        // I need to update MaterialService to return metadata too, or just use docId/title from session.
         onFileLoaded({
             docId: session.docId,
             title: session.title,
@@ -42,7 +41,7 @@ export function useFileImport({ onFileLoaded, onError }: UseFileImportProps) {
         if (onError) {
           onError(error);
         } else {
-          alert(error.message);
+          addToast(error.message, 'error');
         }
       } finally {
         if (event.target) {
@@ -50,7 +49,7 @@ export function useFileImport({ onFileLoaded, onError }: UseFileImportProps) {
         }
       }
     },
-    [onFileLoaded, onError]
+    [onFileLoaded, onError, addToast]
   );
 
   return {

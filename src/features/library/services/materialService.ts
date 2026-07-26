@@ -61,7 +61,12 @@ export class MaterialService {
       throw new Error('Lütfen geçerli bir PDF (.pdf) dosyası seçin.');
     }
 
-    const docId = `custom-pdf-${Date.now()}`;
+    const MAX_FILE_SIZE = 200 * 1024 * 1024; // 200MB
+    if (file.size > MAX_FILE_SIZE) {
+      throw new Error('Dosya boyutu çok büyük. Lütfen 200MB\'tan küçük bir PDF dosyası seçin.');
+    }
+
+    const docId = `custom-pdf-${crypto.randomUUID()}`;
     const buffer = await file.arrayBuffer();
     const filePath = await PdfStorageService.savePdfFile(docId, buffer);
     
