@@ -9,19 +9,13 @@ import { IHighlightFragment, HighlightColor } from './HighlightModel';
 
 export interface DBHighlightRow {
   id: string;
-  material_id?: string;
-  materialId?: string;
-  page_number?: number;
-  pageNumber?: number;
-  selected_text?: string;
-  selectedText?: string;
-  rects_json?: string;
-  rectsJson?: string;
+  material_id: string;
+  page_number: number;
+  selected_text: string;
+  rects_json: string;
   color: HighlightColor;
-  created_at?: string;
-  createdAt?: string;
-  updated_at?: string;
-  updatedAt?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 class HighlightRepositoryService {
@@ -45,13 +39,8 @@ class HighlightRepositoryService {
   async getHighlightsByMaterial(materialId: string): Promise<IHighlightFragment[]> {
     try {
       Logger.debug('HighlightRepository', `Fetching highlights for material [${materialId}]`);
-      
-      const allRows = await db.select<DBHighlightRow>('highlights');
-      const filtered = allRows.filter((r) => {
-        const idVal = r.materialId || r.material_id;
-        return idVal === materialId;
-      });
-      return this.mapRowsToFragments(filtered);
+      const rows = await db.select<DBHighlightRow>('highlights', { material_id: materialId });
+      return this.mapRowsToFragments(rows);
     } catch (err) {
       Logger.error('HighlightRepository', `Failed to load highlights for [${materialId}]`, err);
       return [];
@@ -64,29 +53,23 @@ class HighlightRepositoryService {
   async saveHighlight(fragment: IHighlightFragment): Promise<IHighlightFragment> {
     try {
       const now = new Date().toISOString();
-      const payload = {
+      const payload: DBHighlightRow = {
         id: fragment.id,
-        materialId: fragment.materialId,
         material_id: fragment.materialId,
-        pageNumber: fragment.pageNumber,
         page_number: fragment.pageNumber,
-        selectedText: fragment.selectedText,
         selected_text: fragment.selectedText,
-        rectsJson: JSON.stringify(fragment.rects),
-        rects_json: JSON.stringify(fragment.rects),
+        rects_json: JSON.stringify(fragment.rects || []),
         color: fragment.color,
-        createdAt: fragment.createdAt || now,
         created_at: fragment.createdAt || now,
-        updatedAt: now,
         updated_at: now,
       };
 
       const existing = await db.select<DBHighlightRow>('highlights', { id: fragment.id });
       if (existing.length > 0) {
-        await db.update('highlights', payload, { id: fragment.id });
+        await db.update('highlights', payload as unknown as Record<string, unknown>, { id: fragment.id });
         Logger.info('HighlightRepository', `Updated highlight fragment [${fragment.id}]`);
       } else {
-        await db.insert('highlights', payload);
+        await db.insert('highlights', payload as unknown as Record<string, unknown>);
         Logger.info('HighlightRepository', `Inserted new highlight fragment [${fragment.id}]`);
       }
 
@@ -117,21 +100,20 @@ class HighlightRepositoryService {
     return rows.map((row) => {
       let rects = [];
       try {
-        const jsonStr = row.rectsJson || row.rects_json || '[]';
-        rects = JSON.parse(jsonStr);
+        rects = JSON.parse(row.rects_json || '[]');
       } catch {
         rects = [];
       }
 
       return {
         id: row.id,
-        materialId: row.materialId || row.material_id || '',
-        pageNumber: row.pageNumber || row.page_number || 1,
-        selectedText: row.selectedText || row.selected_text || '',
+        materialId: row.material_id || '',
+        pageNumber: row.page_number ?? 1,
+        selectedText: row.selected_text || '',
         rects,
         color: (row.color as HighlightColor) || 'yellow',
-        createdAt: row.createdAt || row.created_at || new Date().toISOString(),
-        updatedAt: row.updatedAt || row.updated_at || new Date().toISOString(),
+        createdAt: row.created_at || new Date().toISOString(),
+        updatedAt: row.updated_at || new Date().toISOString(),
       };
     });
   }

@@ -53,3 +53,33 @@ body {
 textarea:focus, input:focus {
   outline: none;
 }
+
+/* PDF.js Text Layer styling rules */
+.textLayer, [data-pdf-text-layer="true"] {
+  position: absolute;
+  text-align: initial;
+  inset: 0;
+  overflow: hidden;
+  opacity: 1;
+  line-height: 1;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  pointer-events: auto;
+}
+
+.textLayer ::selection, [data-pdf-text-layer="true"] ::selection {
+  background: rgba(251, 191, 36, 0.35); /* Soft amber highlight selection */
+  color: transparent;
+}
+
+.textLayer span, [data-pdf-text-layer="true"] span,
+.textLayer br, [data-pdf-text-layer="true"] br {
+  color: transparent !important;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+  pointer-events: auto;
+}
+

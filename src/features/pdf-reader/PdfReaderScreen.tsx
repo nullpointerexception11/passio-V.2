@@ -110,6 +110,16 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
   // Export Notes Modal State
   const [showExportModal, setShowExportModal] = useState<boolean>(false);
 
+  // Permanent Side Panel Mode: 'list' (search & view notes) or 'edit' (create / edit note)
+  const [notePanelMode, setNotePanelMode] = useState<'list' | 'edit'>('list');
+
+  // Sync with editingNote if set externally
+  useEffect(() => {
+    if (editingNote) {
+      setNotePanelMode('edit');
+    }
+  }, [editingNote]);
+
   // Jump to specific page
   const handleJumpToPage = (pageNum: number) => {
     const pageElem = document.getElementById(`pdf-page-container-${pageNum}`);
@@ -413,14 +423,22 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
                   }}
                 >
                   <button
-                    onClick={handleOpenNewNote}
+                    onClick={() => {
+                      handleOpenNewNote();
+                      setNotePanelMode('edit');
+                      setShowNoteMenu(false);
+                    }}
                     className="w-full px-3 py-2 rounded-lg flex items-center gap-2 transition-colors hover:bg-black/5 dark:hover:bg-white/5 text-left cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5 text-amber-500" />
                     <span>Yeni Not</span>
                   </button>
                   <button
-                    onClick={handleOpenSearchNote}
+                    onClick={() => {
+                      handleOpenSearchNote();
+                      setNotePanelMode('list');
+                      setShowNoteMenu(false);
+                    }}
                     className="w-full px-3 py-2 rounded-lg flex items-center gap-2 transition-colors hover:bg-black/5 dark:hover:bg-white/5 text-left cursor-pointer"
                   >
                     <Search className="w-3.5 h-3.5 opacity-60" />
@@ -464,13 +482,14 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
         </div>
       </header>
 
-      {/* Center PDF View Engine Area & Reading Notes Split View */}
-      <div className="flex-1 flex w-full h-[calc(100vh-3.5rem)] overflow-hidden relative">
-        <main 
-          className={`h-full transition-all duration-300 relative overflow-hidden ${
-            showNoteDialog || showSearchNoteDialog ? 'w-full lg:w-[80%] flex-1' : 'w-full'
-          }`}
-        >
+      {/* Center PDF View Engine Area & Permanent 80/20 Reading Notes Split View */}
+      <div 
+        className="flex-1 w-full h-[calc(100vh-3.5rem)] overflow-hidden grid grid-cols-1 lg:grid-cols-[80%_20%]"
+        style={{
+          gridTemplateColumns: '80% 20%',
+        }}
+      >
+        <main className="h-full w-full relative overflow-hidden min-w-0">
           {isLoading ? (
             /* Premium Calm Skeleton Loading View */
             <div className="flex flex-col items-center justify-center h-full gap-4">
@@ -497,41 +516,40 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
           )}
         </main>
 
-        {/* 20% Reading Notes Side Panel */}
-        <AnimatePresence>
-          {(showNoteDialog || showSearchNoteDialog) && (
-            <motion.aside
-              initial={{ x: '100%', opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: '100%', opacity: 0 }}
-              transition={{ duration: 0.2, ease: 'easeInOut' }}
-              className="w-full sm:w-[320px] lg:w-[20%] min-w-[280px] max-w-[380px] h-full border-l shrink-0 z-30 shadow-xl"
-              style={{
-                borderColor: 'var(--color-border-subtle)',
-                backgroundColor: 'var(--color-bg-surface)',
+        {/* Permanent 20% Reading Notes Side Panel */}
+        <aside
+          className="h-full w-full border-l shrink-0 z-30 shadow-sm overflow-hidden flex flex-col"
+          style={{
+            borderColor: 'var(--color-border-subtle)',
+            backgroundColor: 'var(--color-bg-surface)',
+          }}
+        >
+          {notePanelMode === 'edit' ? (
+            <ReadingNoteDialog
+              note={editingNote}
+              onSave={async (title, content, tags, existingId) => {
+                await handleSaveNote(title, content, tags, existingId);
+                setNotePanelMode('list');
               }}
-            >
-              {showNoteDialog && (
-                <ReadingNoteDialog
-                  note={editingNote}
-                  onSave={handleSaveNote}
-                  onClose={() => {
-                    setShowNoteDialog(false);
-                  }}
-                />
-              )}
-
-              {showSearchNoteDialog && (
-                <ReadingNoteSearchDialog
-                  notes={notes}
-                  onSelectNote={handleSelectNoteFromSearch}
-                  onDeleteNote={handleDeleteNote}
-                  onClose={() => setShowSearchNoteDialog(false)}
-                />
-              )}
-            </motion.aside>
+              onClose={() => {
+                setNotePanelMode('list');
+              }}
+            />
+          ) : (
+            <ReadingNoteSearchDialog
+              notes={notes}
+              onSelectNote={(note) => {
+                handleSelectNoteFromSearch(note);
+                setNotePanelMode('edit');
+              }}
+              onDeleteNote={handleDeleteNote}
+              onNewNote={() => {
+                handleOpenNewNote();
+                setNotePanelMode('edit');
+              }}
+            />
           )}
-        </AnimatePresence>
+        </aside>
       </div>
 
       {/* PDF Table of Contents (İçindekiler) Drawer */}

@@ -4,20 +4,22 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import { X, Search, Tag, Calendar, Trash2, Edit2, FileText } from 'lucide-react';
+import { X, Search, Tag, Calendar, Trash2, Edit2, FileText, Plus } from 'lucide-react';
 import { IReadingNote } from '../../entities/note/ReadingNoteModel';
 
 interface ReadingNoteSearchDialogProps {
   notes: IReadingNote[];
   onSelectNote: (note: IReadingNote) => void;
   onDeleteNote: (noteId: string) => void;
-  onClose: () => void;
+  onNewNote?: () => void;
+  onClose?: () => void;
 }
 
 export const ReadingNoteSearchDialog: React.FC<ReadingNoteSearchDialogProps> = ({
   notes,
   onSelectNote,
   onDeleteNote,
+  onNewNote,
   onClose,
 }) => {
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -49,15 +51,29 @@ export const ReadingNoteSearchDialog: React.FC<ReadingNoteSearchDialogProps> = (
         <div className="flex items-center justify-between">
           <h2 className="text-xs font-serif font-medium tracking-wide flex items-center gap-1.5">
             <Search className="w-3.5 h-3.5 text-amber-500" />
-            Not Ara
+            Okuma Notları ({notes.length})
           </h2>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition-colors"
-            title="Kapat"
-          >
-            <X className="w-4 h-4 opacity-60" />
-          </button>
+          <div className="flex items-center gap-1">
+            {onNewNote && (
+              <button
+                onClick={onNewNote}
+                className="flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 text-[11px] font-mono cursor-pointer transition-colors"
+                title="Yeni Not Ekle"
+              >
+                <Plus className="w-3 h-3" />
+                <span>Yeni</span>
+              </button>
+            )}
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition-colors"
+                title="Aramayı Temizle"
+              >
+                <X className="w-4 h-4 opacity-60" />
+              </button>
+            )}
+          </div>
         </div>
 
         <div 

@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import Database from '@tauri-apps/plugin-sql';
 import { Logger } from '../../core/logger/Logger';
 import { AppConfig } from '../../core/config/AppConfig';
 
@@ -21,14 +22,23 @@ export interface IDatabaseService {
 type RecordType = Record<string, unknown>;
 
 /**
- * In-Memory & LocalStorage based SQL adapter for browser/web preview fallback.
- * Allows full data survival, querying, and schema obedience without breaking Tauri's native layer.
+ * Check if current execution context is inside Tauri desktop environment
+ */
+export const isTauriEnvironment = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const win = window as unknown as Record<string, unknown>;
+  return '__TAURI_IPC__' in win || '__TAURI__' in win || '__TAURI_INTERNALS__' in win;
+};
+
+/**
+ * In-Memory & LocalStorage based SQL adapter ONLY for browser/web preview fallback (npm run dev, non-Tauri).
+ * Allows full data survival and testing in web browser sandbox.
  */
 class BrowserMockDatabaseService implements IDatabaseService {
   private store: Record<string, Record<string, RecordType>> = {};
 
   async initialize(): Promise<void> {
-    Logger.info('Database', 'Initializing Browser fallback Database Engine...');
+    Logger.info('Database', 'Initializing Browser preview fallback Database Engine...');
     
     // Seed initial collections and settings
     this.store['documents'] = JSON.parse(localStorage.getItem('passio_docs') || '{}');
@@ -180,32 +190,25 @@ class BrowserMockDatabaseService implements IDatabaseService {
   }
 }
 
-interface ITauriSqlPlugin {
-  execute(query: string, params?: unknown[]): Promise<unknown>;
-  select<T>(query: string, params?: unknown[]): Promise<T[]>;
-}
-
 /**
  * Desktop Tauri SQLite Database Service
- * Implemented to interface directly with Tauri's SQL Bridge plugin in production builds.
+ * Interfaces directly with Tauri's SQL Bridge plugin (@tauri-apps/plugin-sql) in production desktop builds.
  */
 class TauriDatabaseService implements IDatabaseService {
-  private dbInstance: ITauriSqlPlugin | null = null;
+  private dbInstance: InstanceType<typeof Database> | null = null;
 
   async initialize(): Promise<void> {
     Logger.info('Database', `Initializing Native SQLite Database: ${AppConfig.database.fileName}`);
     try {
-      // Dynamic import to prevent bundler errors in browser sandbox context
-      const pluginName = '@tauri-apps/plugin-sql';
-      const { default: Database } = await import(/* @vite-ignore */ pluginName);
       this.dbInstance = await Database.load(`sqlite:${AppConfig.database.fileName}`);
       Logger.info('Database', 'Native SQLite Database connection established successfully via Tauri bridge.');
       
-      // Execute table creation scripts (mimicking drizzle-kit migrations on launch)
       await this.runMigrations();
     } catch (err) {
-      Logger.error('Database', 'Failed to initialize native SQLite. Swapping to Browser Fallback...', err);
-      throw err;
+      Logger.error('Database', 'CRITICAL: Failed to initialize native SQLite in Tauri environment.', err);
+      // STRICT RULE: In Tauri environment, silent fallback to LocalStorage/Mock is forbidden.
+      // Re-throw so user is shown a visible error.
+      throw new Error(`Tauri SQLite Veritabanı Başlatılamadı: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
@@ -306,11 +309,11 @@ class TauriDatabaseService implements IDatabaseService {
   async select<T>(table: string, filters?: Record<string, unknown>): Promise<T[]> {
     if (!this.dbInstance) throw new Error('DB not initialized');
     if (!filters || Object.keys(filters).length === 0) {
-      return this.dbInstance.select<T>(`SELECT * FROM ${table}`);
+      return this.dbInstance.select<T[]>(`SELECT * FROM ${table}`);
     }
     const keys = Object.keys(filters).map(k => `${k} = ?`).join(' AND ');
     const vals = Object.values(filters);
-    return this.dbInstance.select<T>(`SELECT * FROM ${table} WHERE ${keys}`, vals);
+    return this.dbInstance.select<T[]>(`SELECT * FROM ${table} WHERE ${keys}`, vals);
   }
 
   async insert<T>(table: string, data: Record<string, unknown>): Promise<T> {
@@ -340,22 +343,17 @@ class TauriDatabaseService implements IDatabaseService {
   }
 }
 
-// Check window safely
-const win = typeof window !== 'undefined' ? (window as unknown as Record<string, unknown>) : {};
-const isTauri = typeof window !== 'undefined' && ('__TAURI_IPC__' in win || '__TAURI__' in win);
+export const isTauri = isTauriEnvironment();
 
 export const db: IDatabaseService = isTauri ? new TauriDatabaseService() : new BrowserMockDatabaseService();
 
 export async function initDb(): Promise<void> {
-  try {
+  if (isTauri) {
+    Logger.info('Database', 'Initializing Native Tauri SQLite Database...');
     await db.initialize();
-  } catch (err) {
-    Logger.warn('Database', 'Native SQLite failed. Reverting to memory storage layer...', err);
-    if (isTauri) {
-      const fallback = new BrowserMockDatabaseService();
-      await fallback.initialize();
-      Object.assign(db, fallback);
-    }
+  } else {
+    Logger.info('Database', 'Initializing Browser Preview Mock Database (non-Tauri environment)...');
+    await db.initialize();
   }
 }
 

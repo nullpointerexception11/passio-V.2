@@ -5,6 +5,7 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
+import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 import { PdfEngine } from '../../core/pdf/PdfService';
 import { HighlightService } from '../../core/highlight/HighlightService';
 import { PdfPageCanvas } from './PdfPageCanvas';
@@ -32,6 +33,7 @@ export const PdfReaderEngine: React.FC<PdfReaderEngineProps> = ({
   initialPage = 1,
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const virtuosoRef = useRef<VirtuosoHandle>(null);
   const [currentPage, setCurrentPage] = useState<number>(initialPage);
   const [computedScale, setComputedScale] = useState<number>(scale);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -71,14 +73,38 @@ export const PdfReaderEngine: React.FC<PdfReaderEngineProps> = ({
   // Jump to initial page or restored last read page on mount
   useEffect(() => {
     if (initialPage > 1 && viewMode === 'continuous') {
-      setTimeout(() => {
-        const pageElem = document.getElementById(`pdf-page-container-${initialPage}`);
-        if (pageElem) {
-          pageElem.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const timer = setTimeout(() => {
+        if (virtuosoRef.current) {
+          virtuosoRef.current.scrollToIndex({
+            index: initialPage - 1,
+            align: 'start',
+            behavior: 'smooth',
+          });
         }
       }, 300);
+      return () => clearTimeout(timer);
     }
   }, [initialPage, viewMode]);
+
+  // Listen to custom jump events from TOC or search
+  useEffect(() => {
+    const handleJumpEvent = (e: CustomEvent<{ page: number }>) => {
+      const pageNum = e.detail?.page;
+      if (pageNum && pageNum >= 1 && pageNum <= numPages) {
+        if (viewMode === 'continuous' && virtuosoRef.current) {
+          virtuosoRef.current.scrollToIndex({
+            index: pageNum - 1,
+            align: 'start',
+            behavior: 'smooth',
+          });
+        }
+      }
+    };
+    window.addEventListener('passio:jump-to-page' as any, handleJumpEvent as any);
+    return () => {
+      window.removeEventListener('passio:jump-to-page' as any, handleJumpEvent as any);
+    };
+  }, [numPages, viewMode]);
 
   // Save current page state with debounce (avoids database thrashing during rapid scroll)
   const persistPageNumber = useCallback(
@@ -114,34 +140,51 @@ export const PdfReaderEngine: React.FC<PdfReaderEngineProps> = ({
     <div
       ref={scrollContainerRef}
       id="passio-pdf-scroll-chassis"
-      className="w-full h-full overflow-y-auto overflow-x-hidden flex flex-col items-center justify-start custom-scrollbar relative px-4 py-8 touch-pan-y"
+      className="w-full h-full overflow-hidden relative flex flex-col items-center justify-start touch-pan-y"
       style={{
         backgroundColor: 'var(--color-bg-base)',
       }}
     >
       {viewMode === 'continuous' ? (
-        /* Continuous Scroll View Mode */
-        <div className="flex flex-col items-center justify-center w-full max-w-4xl mx-auto">
-          {Array.from({ length: numPages }, (_, i) => i + 1).map((pageNum) => (
-            <PdfPageCanvas
-              key={`pdf-page-${pageNum}`}
-              docId={docId}
-              pdfDoc={pdfDoc}
-              pageNumber={pageNum}
-              scale={computedScale}
-              autoCropMargins={autoCropMargins}
-              viewMode={viewMode}
-              onVisible={(visiblePage) => {
-                if (visiblePage !== currentPage) {
-                  persistPageNumber(visiblePage);
-                }
-              }}
-            />
-          ))}
-        </div>
+        /* Continuous Scroll View Mode using react-virtuoso windowed rendering */
+        <Virtuoso
+          ref={virtuosoRef}
+          totalCount={numPages}
+          initialTopMostItemIndex={initialPage > 1 ? initialPage - 1 : 0}
+          overscan={200}
+          className="w-full h-full custom-scrollbar"
+          style={{ height: '100%', width: '100%' }}
+          rangeChanged={({ startIndex, endIndex }) => {
+            const middleIndex = Math.floor((startIndex + endIndex) / 2);
+            const visiblePage = middleIndex + 1;
+            if (visiblePage !== currentPage && visiblePage >= 1 && visiblePage <= numPages) {
+              persistPageNumber(visiblePage);
+            }
+          }}
+          itemContent={(index) => {
+            const pageNum = index + 1;
+            return (
+              <div key={`pdf-page-wrapper-${pageNum}`} className="flex justify-center w-full py-4 px-4">
+                <PdfPageCanvas
+                  docId={docId}
+                  pdfDoc={pdfDoc}
+                  pageNumber={pageNum}
+                  scale={computedScale}
+                  autoCropMargins={autoCropMargins}
+                  viewMode={viewMode}
+                  onVisible={(visiblePage) => {
+                    if (visiblePage !== currentPage) {
+                      persistPageNumber(visiblePage);
+                    }
+                  }}
+                />
+              </div>
+            );
+          }}
+        />
       ) : (
         /* Single Page View Mode */
-        <div className="flex flex-col items-center justify-center min-h-full py-6 relative">
+        <div className="flex flex-col items-center justify-center min-h-full py-6 relative overflow-y-auto w-full h-full custom-scrollbar">
           <PdfPageCanvas
             key={`pdf-single-page-${currentPage}`}
             docId={docId}

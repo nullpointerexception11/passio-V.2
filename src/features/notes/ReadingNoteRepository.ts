@@ -9,16 +9,12 @@ import { IReadingNote } from '../../entities/note/ReadingNoteModel';
 
 export interface DBNoteRow {
   id: string;
-  material_id?: string;
-  materialId?: string;
+  material_id: string;
   title?: string;
   content: string;
   tags_json?: string;
-  tagsJson?: string;
   created_at?: string;
-  createdAt?: string;
   updated_at?: string;
-  updatedAt?: string;
 }
 
 class ReadingNoteRepositoryService {
@@ -36,12 +32,7 @@ class ReadingNoteRepositoryService {
   async getNotesByMaterial(materialId: string): Promise<IReadingNote[]> {
     try {
       Logger.debug('ReadingNoteRepository', `Fetching notes for material [${materialId}]`);
-
-      const rows = await db.select<DBNoteRow>('reading_notes', { materialId });
-      if (rows.length === 0) {
-        const altRows = await db.select<DBNoteRow>('reading_notes', { material_id: materialId });
-        return this.mapRowsToNotes(altRows);
-      }
+      const rows = await db.select<DBNoteRow>('reading_notes', { material_id: materialId });
       return this.mapRowsToNotes(rows);
     } catch (err) {
       Logger.error('ReadingNoteRepository', `Failed to load notes for [${materialId}]`, err);
@@ -52,26 +43,22 @@ class ReadingNoteRepositoryService {
   async saveNote(note: IReadingNote): Promise<IReadingNote> {
     try {
       const now = new Date().toISOString();
-      const payload = {
+      const payload: DBNoteRow = {
         id: note.id,
-        materialId: note.materialId,
         material_id: note.materialId,
         title: note.title || '',
         content: note.content,
-        tagsJson: JSON.stringify(note.tags || []),
         tags_json: JSON.stringify(note.tags || []),
-        createdAt: note.createdAt || now,
         created_at: note.createdAt || now,
-        updatedAt: now,
         updated_at: now,
       };
 
       const existing = await db.select<DBNoteRow>('reading_notes', { id: note.id });
       if (existing.length > 0) {
-        await db.update('reading_notes', payload, { id: note.id });
+        await db.update('reading_notes', payload as unknown as Record<string, unknown>, { id: note.id });
         Logger.info('ReadingNoteRepository', `Updated reading note [${note.id}]`);
       } else {
-        await db.insert('reading_notes', payload);
+        await db.insert('reading_notes', payload as unknown as Record<string, unknown>);
         Logger.info('ReadingNoteRepository', `Inserted new reading note [${note.id}]`);
       }
 
@@ -99,20 +86,19 @@ class ReadingNoteRepositoryService {
     return rows.map((row) => {
       let tags: string[] = [];
       try {
-        const jsonStr = row.tagsJson || row.tags_json || '[]';
-        tags = JSON.parse(jsonStr);
+        tags = JSON.parse(row.tags_json || '[]');
       } catch {
         tags = [];
       }
 
       return {
         id: row.id,
-        materialId: row.materialId || row.material_id || '',
+        materialId: row.material_id || '',
         title: row.title || '',
         content: row.content || '',
         tags,
-        createdAt: row.createdAt || row.created_at || new Date().toISOString(),
-        updatedAt: row.updatedAt || row.updated_at || new Date().toISOString(),
+        createdAt: row.created_at || new Date().toISOString(),
+        updatedAt: row.updated_at || new Date().toISOString(),
       };
     });
   }

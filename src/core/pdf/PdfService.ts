@@ -4,12 +4,13 @@
  */
 
 import * as pdfjsLib from 'pdfjs-dist';
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { Logger } from '../logger/Logger';
 import { db } from '../../db/connection';
 
 // Configure PDF.js Worker for browser sandbox & Tauri native environment
 if (typeof window !== 'undefined') {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+  pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 }
 
 export interface IPdfDocumentMeta {
@@ -28,7 +29,7 @@ export interface IPdfPageRenderOptions {
 }
 
 class PdfService {
-  private activeRenderTasks: Map<number, pdfjsLib.RenderTask> = new Map();
+  private activeRenderTasks: Map<string, pdfjsLib.RenderTask> = new Map();
 
   /**
    * Initializes and loads a PDF document from URL or ArrayBuffer
@@ -114,16 +115,20 @@ class PdfService {
     pdfDoc: pdfjsLib.PDFDocumentProxy,
     pageNumber: number,
     canvas: HTMLCanvasElement,
-    scale: number
+    scale: number,
+    docId?: string
   ): Promise<void> {
-    // Cancel any existing render task on this page number to prevent canvas race conditions
-    if (this.activeRenderTasks.has(pageNumber)) {
+    const effectiveDocId = docId || (pdfDoc as any).fingerprint || 'doc';
+    const taskKey = `${effectiveDocId}-${pageNumber}`;
+
+    // Cancel any existing render task on this composite key to prevent canvas race conditions
+    if (this.activeRenderTasks.has(taskKey)) {
       try {
-        this.activeRenderTasks.get(pageNumber)?.cancel();
+        this.activeRenderTasks.get(taskKey)?.cancel();
       } catch {
         // Ignore task cancellation error
       }
-      this.activeRenderTasks.delete(pageNumber);
+      this.activeRenderTasks.delete(taskKey);
     }
 
     try {
@@ -149,15 +154,16 @@ class PdfService {
       };
 
       const renderTask = page.render(renderContext);
-      this.activeRenderTasks.set(pageNumber, renderTask);
+      this.activeRenderTasks.set(taskKey, renderTask);
 
       await renderTask.promise;
-      this.activeRenderTasks.delete(pageNumber);
+      this.activeRenderTasks.delete(taskKey);
     } catch (err: any) {
+      this.activeRenderTasks.delete(taskKey);
       if (err?.name === 'RenderingCancelledException') {
-        Logger.debug('PdfService', `Rendering cancelled for page ${pageNumber} due to scroll or zoom change.`);
+        Logger.debug('PdfService', `Rendering cancelled for page ${pageNumber} of [${effectiveDocId}] due to scroll or zoom change.`);
       } else {
-        Logger.error('PdfService', `Error rendering page ${pageNumber}:`, err);
+        Logger.error('PdfService', `Error rendering page ${pageNumber} of [${effectiveDocId}]:`, err);
       }
     }
   }

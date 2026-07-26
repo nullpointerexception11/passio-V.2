@@ -269,7 +269,7 @@ export const PdfPageCanvas: React.FC<PdfPageCanvasProps> = React.memo(({
     if (!canvasRef.current) return;
 
     let isSubscribed = true;
-    PdfEngine.renderPageToCanvas(pdfDoc, pageNumber, canvasRef.current, scale).then(() => {
+    PdfEngine.renderPageToCanvas(pdfDoc, pageNumber, canvasRef.current, scale, docId).then(() => {
       if (isSubscribed) {
         setIsRendered(true);
       }
