@@ -377,7 +377,7 @@ export const PdfPageCanvas: React.FC<PdfPageCanvasProps> = React.memo(({
         {/* Inner Content Wrapper */}
         <div
           ref={innerWrapperRef}
-          className="relative h-full transition-transform duration-300 mx-auto flex items-center justify-center"
+          className="relative h-full transition-transform duration-300 mx-auto flex items-center justify-center select-text"
           style={{
             width: `${estimatedWidth}px`,
             height: `${estimatedHeight}px`,

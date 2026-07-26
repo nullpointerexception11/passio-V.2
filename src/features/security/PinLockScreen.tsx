@@ -64,16 +64,20 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({ onUnlock }) => {
       return;
     }
 
-    if (pin.length >= 4) return;
-    const newPin = pin + value;
-    setPin(newPin);
-
-    if (newPin.length === 4) {
-      setTimeout(async () => {
-        await processFullPin(newPin);
-      }, 150);
-    }
+    setPin((prev) => {
+      if (prev.length >= 4) return prev;
+      return prev + value;
+    });
   };
+
+  useEffect(() => {
+    if (pin.length === 4) {
+      const timer = setTimeout(async () => {
+        await processFullPin(pin);
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [pin, mode, setupPin]); // Include mode and setupPin so processFullPin uses latest state
 
   const processFullPin = async (completedPin: string) => {
     if (mode === 'UNLOCK') {

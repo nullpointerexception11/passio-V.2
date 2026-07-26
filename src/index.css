@@ -60,7 +60,7 @@ textarea:focus, input:focus {
   position: absolute;
   text-align: initial;
   inset: 0;
-  overflow: clip;
+  overflow: hidden;
   opacity: 1;
   line-height: 1;
   letter-spacing: normal;
@@ -70,9 +70,12 @@ textarea:focus, input:focus {
   text-size-adjust: none;
   forced-color-adjust: none;
   transform-origin: 0 0;
-  caret-color: CanvasText;
   z-index: 20;
   pointer-events: auto;
+  cursor: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  user-select: text;
 }
 
 .textLayer :is(span, br), [data-pdf-text-layer="true"] :is(span, br) {
@@ -94,18 +97,6 @@ textarea:focus, input:focus {
   --total-scale-factor: calc(var(--scale-factor, 1) * var(--user-unit, 1));
 }
 
-.textLayer > :not(.markedContent),
-.textLayer .markedContent span:not(.markedContent),
-[data-pdf-text-layer="true"] > :not(.markedContent),
-[data-pdf-text-layer="true"] .markedContent span:not(.markedContent) {
-  z-index: 1;
-  --font-height: 0;
-  font-size: calc(var(--text-scale-factor) * var(--font-height));
-  --scale-x: 1;
-  --rotate: 0deg;
-  transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
-}
-
 .textLayer .markedContent, [data-pdf-text-layer="true"] .markedContent {
   display: contents;
 }
@@ -118,7 +109,7 @@ textarea:focus, input:focus {
 }
 
 .textLayer ::selection, [data-pdf-text-layer="true"] ::selection {
-  background: rgba(251, 191, 36, 0.35) !important; /* Soft amber highlight selection */
+  background: rgba(251, 191, 36, 0.4) !important; /* Amber highlight selection */
   color: transparent !important;
 }
 

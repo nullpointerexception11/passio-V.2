@@ -49,6 +49,8 @@ class SecurityService implements ISecurityService {
       const pinHash = await this.hashPinWithSalt(pin, salt);
       const now = new Date().toISOString();
       
+      await this.clearPinSettings(); // Clear existing setup to prevent UNIQUE constraint errors
+
       await db.insert('settings', { key: 'pin_salt', value: salt, updated_at: now });
       await db.insert('settings', { key: 'pin_hash', value: pinHash, updated_at: now });
       await db.insert('settings', { key: 'pin_setup_completed', value: 'true', updated_at: now });

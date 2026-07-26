@@ -155,7 +155,7 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
   return (
     <div
       id="passio-pdf-fullscreen-reader"
-      className="fixed inset-0 z-50 flex flex-col w-screen h-screen select-none overflow-hidden"
+      className="fixed inset-0 z-50 flex flex-col w-screen h-screen overflow-hidden"
       style={{
         backgroundColor: 'var(--color-bg-base)',
         color: 'var(--color-text-primary)',
