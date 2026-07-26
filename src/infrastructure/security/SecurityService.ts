@@ -49,9 +49,9 @@ class SecurityService implements ISecurityService {
       const pinHash = await this.hashPinWithSalt(pin, salt);
       const now = new Date().toISOString();
       
-      await db.insert('settings', { key: 'pin_salt', value: salt, updatedAt: now });
-      await db.insert('settings', { key: 'pin_hash', value: pinHash, updatedAt: now });
-      await db.insert('settings', { key: 'pin_setup_completed', value: 'true', updatedAt: now });
+      await db.insert('settings', { key: 'pin_salt', value: salt, updated_at: now });
+      await db.insert('settings', { key: 'pin_hash', value: pinHash, updated_at: now });
+      await db.insert('settings', { key: 'pin_setup_completed', value: 'true', updated_at: now });
 
       this.cacheSetupCompleted = true;
       Logger.info('Security', 'Initial 4-digit PIN setup completed and persisted securely.');
