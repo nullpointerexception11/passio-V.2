@@ -240,7 +240,120 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
                         boxShadow: 'var(--shadows-large)',
                       }}
                     >
-                      {/* ... Settings Content ... */}
+                      {/* Okuma Modu */}
+                      <div className="flex flex-col gap-2">
+                        <span className="text-stone-400 dark:text-stone-500 uppercase tracking-wider text-[10px] font-semibold">Okuma Modu</span>
+                        <div className="grid grid-cols-3 gap-1 bg-stone-100 dark:bg-stone-800/50 p-1 rounded-lg">
+                          {(['original', 'dark', 'sepia'] as PdfReadingMode[]).map((mode) => (
+                            <button
+                              key={mode}
+                              onClick={() => setPdfReadingMode(mode)}
+                              className={`py-1.5 rounded-md text-center transition-all cursor-pointer ${
+                                pdfReadingMode === mode
+                                  ? 'bg-white dark:bg-stone-700 shadow-sm text-stone-900 dark:text-stone-100 font-medium'
+                                  : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
+                              }`}
+                            >
+                              {mode === 'original' ? 'Orijinal' : mode === 'dark' ? 'Karanlık' : 'Sepya'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Sayfa Akışı */}
+                      <div className="flex flex-col gap-2">
+                        <span className="text-stone-400 dark:text-stone-500 uppercase tracking-wider text-[10px] font-semibold">Sayfa Akışı</span>
+                        <div className="grid grid-cols-2 gap-1 bg-stone-100 dark:bg-stone-800/50 p-1 rounded-lg">
+                          {(['continuous', 'single'] as const).map((mode) => (
+                            <button
+                              key={mode}
+                              onClick={() => setViewMode(mode)}
+                              className={`py-1.5 rounded-md text-center transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                                viewMode === mode
+                                  ? 'bg-white dark:bg-stone-700 shadow-sm text-stone-900 dark:text-stone-100 font-medium'
+                                  : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
+                              }`}
+                            >
+                              {mode === 'continuous' ? (
+                                <>
+                                  <ScrollText className="w-3 h-3" />
+                                  Sürekli
+                                </>
+                              ) : (
+                                <>
+                                  <BookOpen className="w-3 h-3" />
+                                  Tek Sayfa
+                                </>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Yakınlaştırma */}
+                      <div className="flex flex-col gap-2">
+                        <span className="text-stone-400 dark:text-stone-500 uppercase tracking-wider text-[10px] font-semibold">Yakınlaştırma</span>
+                        <div className="flex items-center justify-between border rounded-lg p-1.5" style={{ borderColor: 'var(--color-border-subtle)' }}>
+                          <button
+                            onClick={handleZoomOut}
+                            disabled={scale <= 0.5}
+                            className="p-1 rounded hover:bg-stone-100 dark:hover:bg-stone-800 disabled:opacity-30 cursor-pointer text-stone-600 dark:text-stone-300"
+                            title="Uzaklaştır"
+                          >
+                            <ZoomOut className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="font-mono text-center min-w-[3rem] font-medium text-stone-700 dark:text-stone-300">
+                            %{Math.round(scale * 100)}
+                          </span>
+                          <button
+                            onClick={handleZoomIn}
+                            disabled={scale >= 3.0}
+                            className="p-1 rounded hover:bg-stone-100 dark:hover:bg-stone-800 disabled:opacity-30 cursor-pointer text-stone-600 dark:text-stone-300"
+                            title="Yakınlaştır"
+                          >
+                            <ZoomIn className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Seçenekler */}
+                      <div className="flex flex-col gap-2">
+                        <span className="text-stone-400 dark:text-stone-500 uppercase tracking-wider text-[10px] font-semibold">Seçenekler</span>
+                        <div className="flex flex-col gap-1.5">
+                          <button
+                            onClick={toggleFitWidth}
+                            className="flex items-center justify-between w-full p-2 rounded-lg border text-left transition-all hover:bg-stone-50 dark:hover:bg-stone-800/30 cursor-pointer"
+                            style={{ borderColor: 'var(--color-border-subtle)' }}
+                          >
+                            <span className="text-stone-700 dark:text-stone-300">Genişliğe Sığdır</span>
+                            <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${
+                              fitWidth 
+                                ? 'bg-amber-500 border-amber-500 text-white' 
+                                : 'border-stone-300 dark:border-stone-600'
+                            }`}>
+                              {fitWidth && <Check className="w-3 h-3 stroke-[3]" />}
+                            </div>
+                          </button>
+
+                          <button
+                            onClick={toggleAutoCropMargins}
+                            className="flex items-center justify-between w-full p-2 rounded-lg border text-left transition-all hover:bg-stone-50 dark:hover:bg-stone-800/30 cursor-pointer"
+                            style={{ borderColor: 'var(--color-border-subtle)' }}
+                          >
+                            <span className="text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
+                              <Crop className="w-3.5 h-3.5 opacity-75" />
+                              Kenarları Kırp
+                            </span>
+                            <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${
+                              autoCropMargins 
+                                ? 'bg-amber-500 border-amber-500 text-white' 
+                                : 'border-stone-300 dark:border-stone-600'
+                            }`}>
+                              {autoCropMargins && <Check className="w-3 h-3 stroke-[3]" />}
+                            </div>
+                          </button>
+                        </div>
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>

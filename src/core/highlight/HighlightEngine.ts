@@ -143,7 +143,9 @@ class HighlightEngineService {
       let matchedGroup: typeof withCenter | null = null;
       for (const group of groups) {
         const rep = group[0];
-        if (Math.abs(item.yCenter - rep.yCenter) < 0.015) {
+        // Scale-independent line grouping: distance must be within 40% of average line height
+        const avgHeight = (item.rect.height + rep.rect.height) * 0.5;
+        if (Math.abs(item.yCenter - rep.yCenter) < avgHeight * 0.4) {
           matchedGroup = group;
           break;
         }

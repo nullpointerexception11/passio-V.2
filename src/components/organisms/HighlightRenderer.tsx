@@ -31,10 +31,11 @@ export const HighlightRenderer: React.FC<HighlightRendererProps> = React.memo(({
     >
       {highlights.map((fragment) => {
         const style = HIGHLIGHT_COLOR_MAP[fragment.color] || HIGHLIGHT_COLOR_MAP.yellow;
+        const mergedRects = HighlightEngine.mergeAdjacentRects(fragment.rects);
 
         return (
           <React.Fragment key={fragment.id}>
-            {fragment.rects.map((rect, idx) => {
+            {mergedRects.map((rect, idx) => {
               const bounds = HighlightEngine.denormalizeRect(rect, pageWidth, pageHeight);
 
               return (

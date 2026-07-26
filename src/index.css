@@ -56,30 +56,69 @@ textarea:focus, input:focus {
 
 /* PDF.js Text Layer styling rules */
 .textLayer, [data-pdf-text-layer="true"] {
+  color-scheme: only light;
   position: absolute;
   text-align: initial;
   inset: 0;
-  overflow: hidden;
+  overflow: clip;
   opacity: 1;
   line-height: 1;
+  letter-spacing: normal;
+  word-spacing: normal;
+  -webkit-text-size-adjust: none;
+  -moz-text-size-adjust: none;
   text-size-adjust: none;
   forced-color-adjust: none;
   transform-origin: 0 0;
+  caret-color: CanvasText;
+  z-index: 20;
   pointer-events: auto;
 }
 
-.textLayer ::selection, [data-pdf-text-layer="true"] ::selection {
-  background: rgba(251, 191, 36, 0.35); /* Soft amber highlight selection */
-  color: transparent;
-}
-
-.textLayer span, [data-pdf-text-layer="true"] span,
-.textLayer br, [data-pdf-text-layer="true"] br {
+.textLayer :is(span, br), [data-pdf-text-layer="true"] :is(span, br) {
   color: transparent !important;
   position: absolute;
   white-space: pre;
   cursor: text;
   transform-origin: 0% 0%;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  user-select: text;
   pointer-events: auto;
+}
+
+.textLayer, [data-pdf-text-layer="true"] {
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor, var(--scale-factor, 1)) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
+  --total-scale-factor: calc(var(--scale-factor, 1) * var(--user-unit, 1));
+}
+
+.textLayer > :not(.markedContent),
+.textLayer .markedContent span:not(.markedContent),
+[data-pdf-text-layer="true"] > :not(.markedContent),
+[data-pdf-text-layer="true"] .markedContent span:not(.markedContent) {
+  z-index: 1;
+  --font-height: 0;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  --scale-x: 1;
+  --rotate: 0deg;
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+}
+
+.textLayer .markedContent, [data-pdf-text-layer="true"] .markedContent {
+  display: contents;
+}
+
+.textLayer span[role="img"], [data-pdf-text-layer="true"] span[role="img"] {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+  cursor: default;
+}
+
+.textLayer ::selection, [data-pdf-text-layer="true"] ::selection {
+  background: rgba(251, 191, 36, 0.35) !important; /* Soft amber highlight selection */
+  color: transparent !important;
 }
 

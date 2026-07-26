@@ -20,6 +20,8 @@ export interface INotebookSettings {
   fontSize: number;
   lineHeight: number;
   maxWidth: string;
+  textColor?: string;
+  fontWeight?: string;
 }
 
 export interface INotebookMetadata {
@@ -59,6 +61,8 @@ export const DEFAULT_NOTEBOOK_SETTINGS: INotebookSettings = {
   fontSize: 18,
   lineHeight: 1.8,
   maxWidth: '75ch',
+  textColor: 'default',
+  fontWeight: 'normal',
 };
 
 export interface DBNotebookRow {

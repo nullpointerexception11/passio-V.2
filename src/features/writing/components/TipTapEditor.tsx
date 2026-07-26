@@ -8,13 +8,16 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import { INotebookSettings } from '../../../core/notebooks/NotebookModel';
-import { WritingToolbar } from './WritingToolbar';
 
 interface TipTapEditorProps {
   initialContent: string;
   settings: INotebookSettings;
   onChange: (text: string) => void;
   onDropKnowledgeItem?: (itemJson: string) => void;
+  isLeftPanelOpen?: boolean;
+  isRightPanelOpen?: boolean;
+  onToggleLeftPanel?: () => void;
+  onToggleRightPanel?: () => void;
 }
 
 export const TipTapEditor: React.FC<TipTapEditorProps> = ({
@@ -89,21 +92,42 @@ export const TipTapEditor: React.FC<TipTapEditorProps> = ({
     }
   };
 
-  return (
-    <div className="w-full flex flex-col items-center h-full overflow-y-auto px-4 py-8">
-      {/* Formatting Toolbar */}
-      <WritingToolbar editor={editor} />
+  const getTextColorClass = (color?: string) => {
+    switch (color) {
+      case 'amber':
+        return 'text-amber-800 dark:text-amber-300';
+      case 'blue':
+        return 'text-blue-800 dark:text-blue-300';
+      case 'emerald':
+        return 'text-emerald-800 dark:text-emerald-300';
+      default:
+        return '';
+    }
+  };
 
+  const getFontWeightClass = (weight?: string) => {
+    switch (weight) {
+      case 'medium':
+        return 'font-medium';
+      case 'semibold':
+        return 'font-semibold';
+      default:
+        return 'font-normal';
+    }
+  };
+
+  return (
+    <div className="w-full flex flex-col items-center h-full overflow-y-auto px-4 pt-16 sm:pt-20 pb-16">
       {/* Editor Main Canvas Container */}
       <div
         onDragOver={handleDragOver}
         onDrop={handleDrop}
-        className={`w-full flex-1 transition-all ${getFontFamilyClass(settings.fontFamily)}`}
+        className={`w-full flex-1 transition-all ${getFontFamilyClass(settings.fontFamily)} ${getTextColorClass(settings.textColor)} ${getFontWeightClass(settings.fontWeight)}`}
         style={{
           maxWidth: settings.maxWidth || '760px',
           fontSize: `${settings.fontSize || 16}px`,
           lineHeight: settings.lineHeight || 1.8,
-          color: 'var(--color-text-primary)',
+          color: !settings.textColor || settings.textColor === 'default' ? 'var(--color-text-primary)' : undefined,
         }}
       >
         <EditorContent editor={editor} />

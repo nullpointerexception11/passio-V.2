@@ -70,6 +70,8 @@ export const PdfTextLayerOverlay: React.FC<PdfTextLayerOverlayProps> = React.mem
         if (isCancelled || !containerRef.current) return;
 
         containerRef.current.style.setProperty('--scale-factor', `${scale}`);
+        containerRef.current.style.setProperty('--total-scale-factor', `${scale}`);
+        containerRef.current.style.setProperty('--user-unit', '1');
 
         textLayerInstance = new pdfjsLib.TextLayer({
           textContentSource: textContent!,

@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { motion } from 'motion/react';
-import { X, Sliders, Type, Maximize2, AlignLeft, Sun, Moon } from 'lucide-react';
+import { X, Sliders, Type, Maximize2, AlignLeft, Sun, Moon, Palette, Bold as BoldIcon } from 'lucide-react';
 import { INotebookSettings } from '../../core/notebooks/NotebookModel';
 import { useTheme } from '../../core/theme/ThemeContext';
 
@@ -40,6 +40,19 @@ export const NotebookSettingsModal: React.FC<NotebookSettingsModalProps> = ({
     { key: '75ch', label: 'Standart (75ch)' },
     { key: '85ch', label: 'Geniş (85ch)' },
     { key: '100%', label: 'Tam Ekran' },
+  ];
+
+  const textColorOptions = [
+    { key: 'default', label: 'Klasik' },
+    { key: 'amber', label: 'Kehribar' },
+    { key: 'blue', label: 'Mürekkep' },
+    { key: 'emerald', label: 'Zümrüt' },
+  ];
+
+  const fontWeightOptions = [
+    { key: 'normal', label: 'Normal' },
+    { key: 'medium', label: 'Orta' },
+    { key: 'semibold', label: 'Kalın' },
   ];
 
   return (
@@ -176,6 +189,54 @@ export const NotebookSettingsModal: React.FC<NotebookSettingsModalProps> = ({
                   style={settings.maxWidth !== mw.key ? { borderColor: 'var(--color-border-subtle)' } : {}}
                 >
                   {mw.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Kalem Rengi (Yazı Rengi) */}
+          <div className="flex flex-col gap-2">
+            <label className="text-[11px] uppercase tracking-wider opacity-60 flex items-center gap-1.5">
+              <Palette className="w-3.5 h-3.5" />
+              Kalem Rengi (Yazı Rengi)
+            </label>
+            <div className="grid grid-cols-4 gap-2">
+              {textColorOptions.map((c) => (
+                <button
+                  key={c.key}
+                  onClick={() => onChangeSettings({ textColor: c.key })}
+                  className={`px-2 py-2 rounded-xl border text-xs text-center transition-all cursor-pointer ${
+                    (settings.textColor || 'default') === c.key 
+                      ? 'border-amber-500 bg-amber-500/10 font-semibold text-amber-600 dark:text-amber-400' 
+                      : 'hover:bg-black/5 dark:hover:bg-white/5 opacity-70'
+                  }`}
+                  style={(settings.textColor || 'default') !== c.key ? { borderColor: 'var(--color-border-subtle)' } : {}}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Yazı Kalınlığı */}
+          <div className="flex flex-col gap-2">
+            <label className="text-[11px] uppercase tracking-wider opacity-60 flex items-center gap-1.5">
+              <BoldIcon className="w-3.5 h-3.5" />
+              Yazı Kalınlığı (Font Weight)
+            </label>
+            <div className="flex items-center gap-2">
+              {fontWeightOptions.map((w) => (
+                <button
+                  key={w.key}
+                  onClick={() => onChangeSettings({ fontWeight: w.key })}
+                  className={`flex-1 py-2 rounded-xl border text-xs transition-all cursor-pointer ${
+                    (settings.fontWeight || 'normal') === w.key 
+                      ? 'border-amber-500 bg-amber-500/10 font-semibold text-amber-600 dark:text-amber-400' 
+                      : 'hover:bg-black/5 dark:hover:bg-white/5 opacity-70'
+                  }`}
+                  style={(settings.fontWeight || 'normal') !== w.key ? { borderColor: 'var(--color-border-subtle)' } : {}}
+                >
+                  {w.label}
                 </button>
               ))}
             </div>
