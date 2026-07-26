@@ -46,13 +46,12 @@ class HighlightRepositoryService {
     try {
       Logger.debug('HighlightRepository', `Fetching highlights for material [${materialId}]`);
       
-      // Try DB select with both camelCase and snake_case mapping support
-      const rows = await db.select<DBHighlightRow>('highlights', { materialId });
-      if (rows.length === 0) {
-        const altRows = await db.select<DBHighlightRow>('highlights', { material_id: materialId });
-        return this.mapRowsToFragments(altRows);
-      }
-      return this.mapRowsToFragments(rows);
+      const allRows = await db.select<DBHighlightRow>('highlights');
+      const filtered = allRows.filter((r) => {
+        const idVal = r.materialId || r.material_id;
+        return idVal === materialId;
+      });
+      return this.mapRowsToFragments(filtered);
     } catch (err) {
       Logger.error('HighlightRepository', `Failed to load highlights for [${materialId}]`, err);
       return [];

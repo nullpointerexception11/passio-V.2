@@ -54,10 +54,12 @@ export const PdfReaderEngine: React.FC<PdfReaderEngineProps> = ({
     pdfDoc.getPage(currentPage).then((page) => {
       if (!isMounted || !scrollContainerRef.current) return;
       const viewport = page.getViewport({ scale: 1.0 });
-      const containerWidth = scrollContainerRef.current.clientWidth - 80; // 80px padding
+      // Restrain container width for optimal centered reading density (max 850px)
+      const availableWidth = scrollContainerRef.current.clientWidth - 48;
+      const containerWidth = Math.min(availableWidth, 850);
       if (containerWidth > 0 && viewport.width > 0) {
         const fitScale = containerWidth / viewport.width;
-        setComputedScale(Math.min(Math.max(fitScale, 0.5), 2.5));
+        setComputedScale(Math.min(Math.max(fitScale, 0.6), 2.2));
       }
     });
 
@@ -112,14 +114,14 @@ export const PdfReaderEngine: React.FC<PdfReaderEngineProps> = ({
     <div
       ref={scrollContainerRef}
       id="passio-pdf-scroll-chassis"
-      className="w-full h-full overflow-y-auto overflow-x-hidden flex flex-col items-center custom-scrollbar relative px-4 py-8 touch-pan-y"
+      className="w-full h-full overflow-y-auto overflow-x-hidden flex flex-col items-center justify-start custom-scrollbar relative px-4 py-8 touch-pan-y"
       style={{
         backgroundColor: 'var(--color-bg-base)',
       }}
     >
       {viewMode === 'continuous' ? (
         /* Continuous Scroll View Mode */
-        <div className="flex flex-col items-center w-full max-w-5xl">
+        <div className="flex flex-col items-center justify-center w-full max-w-4xl mx-auto">
           {Array.from({ length: numPages }, (_, i) => i + 1).map((pageNum) => (
             <PdfPageCanvas
               key={`pdf-page-${pageNum}`}

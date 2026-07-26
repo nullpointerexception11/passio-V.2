@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { PdfEngine } from '../../core/pdf/PdfService';
 import { ReadingNoteService } from '../../core/notes/ReadingNoteService';
+import { HighlightService } from '../../core/highlight/HighlightService';
 import { IReadingNote } from '../../core/notes/ReadingNoteModel';
 import { Logger } from '../../core/logger/Logger';
 
@@ -31,8 +32,8 @@ export function usePdfReader({
 
   // PDF View Settings
   const [scale, setScale] = useState<number>(1.0);
-  const [fitWidth, setFitWidth] = useState<boolean>(false);
-  const [autoCropMargins, setAutoCropMargins] = useState<boolean>(true);
+  const [fitWidth, setFitWidth] = useState<boolean>(true);
+  const [autoCropMargins, setAutoCropMargins] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<'continuous' | 'single'>('continuous');
   const [showSettings, setShowSettings] = useState<boolean>(false);
 
@@ -74,8 +75,10 @@ export function usePdfReader({
     };
   }, [docId, sourceUrlOrBuffer, initialPage]);
 
-  // Load and subscribe to Reading Notes for current material
+  // Load and subscribe to Reading Notes & Highlights for current material
   useEffect(() => {
+    HighlightService.loadHighlights(docId);
+
     ReadingNoteService.loadNotes(docId).then((loaded) => {
       setNotes(loaded);
     });

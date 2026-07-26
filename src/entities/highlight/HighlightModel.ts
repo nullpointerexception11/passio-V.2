@@ -5,7 +5,7 @@
 
 import { IKnowledgeLocator } from '../material/MaterialModel';
 
-export type HighlightColor = 'yellow' | 'blue' | 'green' | 'red';
+export type HighlightColor = 'yellow' | 'blue' | 'green' | 'red' | 'purple' | 'orange';
 
 export interface IHighlightRect {
   x: number;      // 0..1 relative to page viewport width
@@ -63,6 +63,18 @@ export const HIGHLIGHT_COLOR_MAP: Record<HighlightColor, IHighlightColorStyle> =
     border: 'rgba(220, 38, 38, 0.7)',
     accentHex: '#ef4444',
     label: 'Kırmızı',
+  },
+  purple: {
+    bg: 'rgba(168, 85, 247, 0.35)',
+    border: 'rgba(147, 51, 234, 0.7)',
+    accentHex: '#a855f7',
+    label: 'Mor',
+  },
+  orange: {
+    bg: 'rgba(249, 115, 22, 0.35)',
+    border: 'rgba(234, 88, 12, 0.7)',
+    accentHex: '#f97316',
+    label: 'Turuncu',
   },
 };
 

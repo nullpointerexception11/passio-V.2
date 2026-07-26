@@ -56,7 +56,7 @@ export const PdfPageCanvas: React.FC<PdfPageCanvasProps> = React.memo(({
   pdfDoc,
   pageNumber,
   scale,
-  autoCropMargins = true,
+  autoCropMargins = false,
   viewMode = 'continuous',
   onVisible,
 }) => {
@@ -65,10 +65,12 @@ export const PdfPageCanvas: React.FC<PdfPageCanvasProps> = React.memo(({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const pageBoxRef = useRef<HTMLDivElement>(null);
+  const innerWrapperRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const [isVisible, setIsVisible] = useState<boolean>(false);
   const [isRendered, setIsRendered] = useState<boolean>(false);
+  const [pageDimensions, setPageDimensions] = useState<{ width: number; height: number }>({ width: 600, height: 848 });
   const [aspectRatio, setAspectRatio] = useState<number>(0.707); // A4 standard initial ratio
   const [pageHighlights, setPageHighlights] = useState<IHighlightFragment[]>([]);
 
@@ -90,6 +92,67 @@ export const PdfPageCanvas: React.FC<PdfPageCanvasProps> = React.memo(({
     });
     return () => unsubscribe();
   }, [refreshHighlights]);
+
+  // Document-level selection and highlight click listener
+  const processSelection = useCallback((e?: MouseEvent | TouchEvent) => {
+    requestAnimationFrame(() => {
+      const selection = window.getSelection();
+      const targetElement = innerWrapperRef.current || pageBoxRef.current;
+      if (!targetElement) return;
+
+      if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
+        // If single click without text selection, check if user clicked an existing highlight
+        if (e) {
+          const clientX = 'clientX' in e ? e.clientX : e.changedTouches?.[0]?.clientX;
+          const clientY = 'clientY' in e ? e.clientY : e.changedTouches?.[0]?.clientY;
+
+          if (clientX !== undefined && clientY !== undefined) {
+            const hitFragment = HighlightEngine.findHighlightAtPoint(pageHighlights, targetElement, clientX, clientY);
+            if (hitFragment) {
+              setSelectedHighlight(hitFragment);
+              setPendingSelection(null);
+              setToolbarPos({ x: clientX, y: clientY });
+              return;
+            }
+          }
+        }
+
+        setSelectedHighlight(null);
+        setPendingSelection(null);
+        setToolbarPos(null);
+        return;
+      }
+
+      // Verify if the selection range intersects this page container
+      const range = selection.getRangeAt(0);
+      const isIntersecting = range.intersectsNode(targetElement);
+
+      if (!isIntersecting) {
+        return;
+      }
+
+      const result = HighlightEngine.extractNormalizedSelection(selection, targetElement, pageNumber);
+      if (result && result.rects.length > 0) {
+        setSelectedHighlight(null);
+        setPendingSelection(result);
+        setToolbarPos({ x: result.boundingClientX, y: result.boundingClientY });
+      }
+    });
+  }, [pageNumber, pageHighlights]);
+
+  useEffect(() => {
+    const handleGlobalMouseUp = (e: MouseEvent | TouchEvent) => {
+      processSelection(e);
+    };
+
+    document.addEventListener('mouseup', handleGlobalMouseUp);
+    document.addEventListener('touchend', handleGlobalMouseUp);
+
+    return () => {
+      document.removeEventListener('mouseup', handleGlobalMouseUp);
+      document.removeEventListener('touchend', handleGlobalMouseUp);
+    };
+  }, [processSelection]);
 
   // IntersectionObserver for Lazy Page Rendering (Performance optimization for 1000+ pages)
   useEffect(() => {
@@ -134,6 +197,7 @@ export const PdfPageCanvas: React.FC<PdfPageCanvasProps> = React.memo(({
     pdfDoc.getPage(pageNumber).then(async (page) => {
       if (!isMounted) return;
       const viewport = page.getViewport({ scale: 1.0 });
+      setPageDimensions({ width: viewport.width, height: viewport.height });
       setAspectRatio(viewport.width / viewport.height);
 
       try {
@@ -216,39 +280,25 @@ export const PdfPageCanvas: React.FC<PdfPageCanvasProps> = React.memo(({
     };
   }, [pdfDoc, pageNumber, scale, isVisible]);
 
-  // Mouse selection handler
-  const handleMouseUp = () => {
-    const selection = window.getSelection();
-    if (!selection || selection.isCollapsed || !pageBoxRef.current) {
-      if (!selectedHighlight) {
+  const handleSelectColor = async (color: HighlightColor, note?: string) => {
+    try {
+      if (selectedHighlight) {
+        await HighlightService.updateHighlight(docId, selectedHighlight.id, { color, note });
+        setSelectedHighlight(null);
+        setToolbarPos(null);
+      } else if (pendingSelection) {
+        await HighlightService.createHighlight(
+          docId,
+          pageNumber,
+          pendingSelection.selectedText,
+          pendingSelection.rects,
+          color,
+          note
+        );
+        window.getSelection()?.removeAllRanges();
         setPendingSelection(null);
         setToolbarPos(null);
       }
-      return;
-    }
-
-    const result = HighlightEngine.extractNormalizedSelection(selection, pageBoxRef.current, pageNumber);
-    if (result && result.rects.length > 0) {
-      setSelectedHighlight(null);
-      setPendingSelection(result);
-      setToolbarPos({ x: result.boundingClientX, y: result.boundingClientY });
-    }
-  };
-
-  const handleSelectColor = async (color: HighlightColor) => {
-    if (!pendingSelection) return;
-
-    try {
-      await HighlightService.createHighlight(
-        docId,
-        pageNumber,
-        pendingSelection.selectedText,
-        pendingSelection.rects,
-        color
-      );
-      window.getSelection()?.removeAllRanges();
-      setPendingSelection(null);
-      setToolbarPos(null);
     } catch {
       // Error handled in service
     }
@@ -265,7 +315,7 @@ export const PdfPageCanvas: React.FC<PdfPageCanvasProps> = React.memo(({
     }
   };
 
-  const estimatedWidth = Math.floor(600 * scale);
+  const estimatedWidth = Math.floor(pageDimensions.width * scale);
   const estimatedHeight = Math.floor(estimatedWidth / aspectRatio);
 
   const isCropping = autoCropMargins && cropInfo !== null;
@@ -278,7 +328,7 @@ export const PdfPageCanvas: React.FC<PdfPageCanvasProps> = React.memo(({
       ref={containerRef}
       id={`pdf-page-container-${pageNumber}`}
       data-page-number={pageNumber}
-      className={`relative flex flex-col items-center max-w-full transition-all duration-300 ${
+      className={`relative flex flex-col items-center justify-center w-full max-w-full transition-all duration-300 mx-auto ${
         viewMode === 'continuous' ? 'my-0' : 'my-6'
       }`}
       style={{
@@ -288,8 +338,7 @@ export const PdfPageCanvas: React.FC<PdfPageCanvasProps> = React.memo(({
       {/* Page Card Box */}
       <div
         ref={pageBoxRef}
-        onMouseUp={handleMouseUp}
-        className={`relative max-w-full overflow-hidden transition-all duration-300 ${
+        className={`relative max-w-full overflow-hidden transition-all duration-300 mx-auto flex items-center justify-center ${
           viewMode === 'continuous'
             ? `rounded-none shadow-none border-b border-x ${pageNumber === 1 ? 'border-t' : ''}`
             : 'shadow-lg rounded-sm border'
@@ -301,9 +350,10 @@ export const PdfPageCanvas: React.FC<PdfPageCanvasProps> = React.memo(({
           borderColor: modeStyles.borderColor,
         }}
       >
-        {/* Inner Content Wrapper (crops empty side margins & centers text) */}
+        {/* Inner Content Wrapper */}
         <div
-          className="relative h-full transition-transform duration-300"
+          ref={innerWrapperRef}
+          className="relative h-full transition-transform duration-300 mx-auto flex items-center justify-center"
           style={{
             width: `${estimatedWidth}px`,
             height: `${estimatedHeight}px`,
@@ -313,7 +363,7 @@ export const PdfPageCanvas: React.FC<PdfPageCanvasProps> = React.memo(({
           {/* Canvas PDF Page Render */}
           <canvas
             ref={canvasRef}
-            className={`block transition-opacity duration-300 ${
+            className={`block mx-auto transition-opacity duration-300 pointer-events-none select-none ${
               isRendered ? 'opacity-100' : 'opacity-0'
             }`}
             style={{
@@ -369,8 +419,16 @@ export const PdfPageCanvas: React.FC<PdfPageCanvasProps> = React.memo(({
         {toolbarPos && (pendingSelection || selectedHighlight) && (
           <HighlightToolbar
             position={toolbarPos}
+            selectedText={selectedHighlight ? selectedHighlight.selectedText : pendingSelection?.selectedText}
+            selectedColor={selectedHighlight?.color}
+            initialNote={selectedHighlight?.note}
             onSelectColor={handleSelectColor}
             onDelete={handleDeleteHighlight}
+            onClose={() => {
+              setSelectedHighlight(null);
+              setPendingSelection(null);
+              setToolbarPos(null);
+            }}
             isExisting={!!selectedHighlight}
           />
         )}

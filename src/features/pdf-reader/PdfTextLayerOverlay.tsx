@@ -69,6 +69,7 @@ export const PdfTextLayerOverlay: React.FC<PdfTextLayerOverlayProps> = React.mem
 
           const left = tx[4];
           const top = tx[5] - fontHeight;
+          const itemWidth = item.width * scale;
 
           spanList.push({
             id: `text-${pageNumber}-${i}`,
@@ -76,7 +77,7 @@ export const PdfTextLayerOverlay: React.FC<PdfTextLayerOverlayProps> = React.mem
             left,
             top,
             fontSize: fontHeight,
-            width: item.width * scale,
+            width: itemWidth,
           });
         }
 
@@ -95,23 +96,35 @@ export const PdfTextLayerOverlay: React.FC<PdfTextLayerOverlayProps> = React.mem
 
   return (
     <div
-      className="absolute inset-0 z-10 select-text overflow-hidden leading-none pointer-events-auto"
+      data-pdf-text-layer="true"
+      className="absolute inset-0 z-20 select-text overflow-hidden leading-none pointer-events-auto"
       style={{
         width: `${containerWidth}px`,
         height: `${containerHeight}px`,
+        contain: 'layout style paint',
+        touchAction: 'pan-y pinch-zoom',
+        WebkitUserSelect: 'text',
+        userSelect: 'text',
+        WebkitTouchCallout: 'default',
       }}
     >
       {spans.map((span) => (
         <span
           key={span.id}
-          className="absolute cursor-text text-transparent selection:bg-amber-300/40 selection:text-transparent"
+          className="absolute cursor-text text-transparent selection:bg-amber-400/35 selection:text-transparent select-text block overflow-visible"
           style={{
             left: `${span.left}px`,
             top: `${span.top}px`,
             fontSize: `${span.fontSize}px`,
-            fontFamily: 'serif',
+            width: `${span.width}px`,
+            fontFamily: 'serif, sans-serif',
             whiteSpace: 'pre',
             transformOrigin: '0% 0%',
+            lineHeight: 1,
+            pointerEvents: 'auto',
+            WebkitUserSelect: 'text',
+            userSelect: 'text',
+            touchAction: 'manipulation',
           }}
         >
           {span.str}

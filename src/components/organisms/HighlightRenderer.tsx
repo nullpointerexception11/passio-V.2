@@ -26,7 +26,7 @@ export const HighlightRenderer: React.FC<HighlightRendererProps> = React.memo(({
 
   return (
     <div 
-      className="absolute inset-0 pointer-events-none z-20 overflow-hidden"
+      className="absolute inset-0 pointer-events-none z-10 overflow-hidden"
       style={{ width: `${pageWidth}px`, height: `${pageHeight}px` }}
     >
       {highlights.map((fragment) => {
@@ -40,11 +40,7 @@ export const HighlightRenderer: React.FC<HighlightRendererProps> = React.memo(({
               return (
                 <div
                   key={`${fragment.id}-rect-${idx}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (onHighlightClick) onHighlightClick(fragment, e);
-                  }}
-                  className="absolute cursor-pointer pointer-events-auto transition-opacity hover:opacity-80 rounded-[2px]"
+                  className="absolute pointer-events-none transition-opacity rounded-[2px]"
                   style={{
                     left: `${bounds.left}px`,
                     top: `${bounds.top}px`,
