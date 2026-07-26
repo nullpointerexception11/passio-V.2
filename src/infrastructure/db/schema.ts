@@ -12,6 +12,7 @@ export const documents = sqliteTable('documents', {
   id: text('id').primaryKey(),
   title: text('title').notNull(),
   content: text('content').notNull().default(''),
+  filePath: text('file_path'),
   summary: text('summary'),
   wordCount: integer('word_count').notNull().default(0),
   readingTimeMin: integer('reading_time_min').notNull().default(0),

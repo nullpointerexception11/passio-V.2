@@ -24,6 +24,7 @@ export const LibraryScreen: React.FC = () => {
     setShowKnowledgeBridge,
     handleOpenSample,
     handleCustomFileLoaded,
+    handleOpenUserDocument,
     handleSelectKnowledgeItem,
     closeSession,
     goToHome,
@@ -61,7 +62,7 @@ export const LibraryScreen: React.FC = () => {
         ) : (
           <>
             {/* Custom Uploaded Local Materials */}
-            <RecentMaterials customPdfs={customPdfs} onSelect={setActiveSession} />
+            <RecentMaterials customPdfs={customPdfs} onSelect={handleOpenUserDocument} />
 
             {/* Curated Sample Materials Collection */}
             <SampleMaterials

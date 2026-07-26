@@ -6,6 +6,8 @@
 import { SAMPLE_PDF_DOCUMENTS, createDemoPdfBuffer } from '../../../data/samplePdfs';
 import { IMaterial, IMaterialActiveSession } from '../types/material.types';
 import { Logger } from '../../../core/logger/Logger';
+import { db } from '../../../infrastructure/db/connection';
+import { PdfStorageService } from '../../../core/pdf/PdfStorageService';
 
 export class MaterialService {
   /**
@@ -59,24 +61,23 @@ export class MaterialService {
       throw new Error('Lütfen geçerli bir PDF (.pdf) dosyası seçin.');
     }
 
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (reader.result instanceof ArrayBuffer) {
-          const docId = `custom-pdf-${Date.now()}`;
-          const session: IMaterialActiveSession = {
-            docId,
-            title: file.name.replace(/\.pdf$/i, ''),
-            buffer: reader.result,
-          };
-          Logger.info('MaterialService', `Processed uploaded file: ${file.name}`);
-          resolve(session);
-        } else {
-          reject(new Error('Dosya okunamadı.'));
-        }
-      };
-      reader.onerror = (err) => reject(err);
-      reader.readAsArrayBuffer(file);
+    const docId = `custom-pdf-${Date.now()}`;
+    const buffer = await file.arrayBuffer();
+    const filePath = await PdfStorageService.savePdfFile(docId, buffer);
+    
+    await db.insert('documents', {
+      id: docId,
+      title: file.name.replace(/\.pdf$/i, ''),
+      file_path: filePath,
+      content: '',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     });
+
+    return {
+      docId,
+      title: file.name.replace(/\.pdf$/i, ''),
+      buffer,
+    };
   }
 }

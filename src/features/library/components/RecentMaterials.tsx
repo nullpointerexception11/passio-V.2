@@ -5,11 +5,11 @@
 
 import React from 'react';
 import { HardDrive, BookOpen, Eye } from 'lucide-react';
-import { IMaterialActiveSession } from '../types/material.types';
+import { IDocumentMetadata } from '../types/material.types';
 
 interface RecentMaterialsProps {
-  customPdfs: IMaterialActiveSession[];
-  onSelect: (session: IMaterialActiveSession) => void;
+  customPdfs: IDocumentMetadata[];
+  onSelect: (metadata: IDocumentMetadata) => void;
 }
 
 export const RecentMaterials: React.FC<RecentMaterialsProps> = ({ customPdfs, onSelect }) => {

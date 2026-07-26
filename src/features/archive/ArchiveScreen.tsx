@@ -8,7 +8,7 @@ import { Archive, Download, FileText, Search, BookOpen, Clock, ShieldCheck } fro
 import { Header } from '../../shared/ui/Header';
 import { useNavigate } from 'react-router-dom';
 import { SAMPLE_PDF_DOCUMENTS, ISamplePdfDoc } from '../library/samplePdfs';
-import { ReadingNoteRepository } from '../notes/ReadingNoteRepository';
+import { ReadingNoteRepository } from '../../core/notes/ReadingNoteRepository';
 import { IReadingNote } from '../../entities/note/ReadingNoteModel';
 import { ExportDocumentModal } from '../../components/molecules/ExportDocumentModal';
 import { DocumentExportService, ExportFormat } from '../../core/export/DocumentExportService';

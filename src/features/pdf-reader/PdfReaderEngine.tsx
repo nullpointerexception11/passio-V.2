@@ -151,7 +151,7 @@ export const PdfReaderEngine: React.FC<PdfReaderEngineProps> = ({
           ref={virtuosoRef}
           totalCount={numPages}
           initialTopMostItemIndex={initialPage > 1 ? initialPage - 1 : 0}
-          overscan={200}
+          overscan={40}
           className="w-full h-full custom-scrollbar"
           style={{ height: '100%', width: '100%' }}
           rangeChanged={({ startIndex, endIndex }) => {

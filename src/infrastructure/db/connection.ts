@@ -221,6 +221,7 @@ class TauriDatabaseService implements IDatabaseService {
         id TEXT PRIMARY KEY NOT NULL,
         title TEXT NOT NULL,
         content TEXT NOT NULL DEFAULT '',
+        file_path TEXT,
         summary TEXT,
         word_count INTEGER NOT NULL DEFAULT 0,
         reading_time_min INTEGER NOT NULL DEFAULT 0,
@@ -230,6 +231,12 @@ class TauriDatabaseService implements IDatabaseService {
         updated_at TEXT NOT NULL
       );
     `);
+
+    try {
+      await this.dbInstance.execute(`ALTER TABLE documents ADD COLUMN file_path TEXT;`);
+    } catch {
+      // Column file_path already exists
+    }
 
     await this.dbInstance.execute(`
       CREATE TABLE IF NOT EXISTS collections (

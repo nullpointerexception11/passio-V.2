@@ -5,42 +5,42 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { IMaterial, IMaterialActiveSession } from '../types/material.types';
+import { IMaterial, IMaterialActiveSession, IDocumentMetadata } from '../types/material.types';
 import { MaterialService } from '../services/materialService';
 import { MaterialRepository } from '../repositories/materialRepository';
 import { IKnowledgeBridgeItem } from '../../../core/knowledge/KnowledgeBridgeModel';
 import { Logger } from '../../../core/logger/Logger';
+import { db } from '../../../infrastructure/db/connection';
+import { PdfStorageService } from '../../../core/pdf/PdfStorageService';
 
 export function useLibrary() {
   const navigate = useNavigate();
   const location = useLocation();
 
   const [sampleMaterials] = useState<IMaterial[]>(() => MaterialService.getSampleMaterials());
-  const [customPdfs, setCustomPdfs] = useState<IMaterialActiveSession[]>([]);
+  const [customPdfs, setCustomPdfs] = useState<IDocumentMetadata[]>([]);
   const [activeSession, setActiveSession] = useState<IMaterialActiveSession | null>(null);
   const [lastReadPages, setLastReadPages] = useState<Record<string, number>>({});
   const [showKnowledgeBridge, setShowKnowledgeBridge] = useState<boolean>(false);
 
-  // Auto-launch target PDF from route navigation state (Writing Editor "Kaynağa Git")
+  // Load user documents from DB
   useEffect(() => {
-    const state = location.state as { materialId?: string; pageNumber?: number } | undefined;
-    if (state?.materialId) {
-      const materialId = state.materialId;
-      const targetPage = state.pageNumber || 1;
-
-      async function launchFromNav() {
-        try {
-          Logger.info('useLibrary', `Auto-launching material [${materialId}] target page [${targetPage}]`);
-          const session = await MaterialService.prepareSampleSession(materialId, targetPage);
-          setActiveSession(session);
-          window.history.replaceState({}, document.title);
-        } catch (err) {
-          Logger.error('useLibrary', 'Failed auto-launching material from nav state', err);
-        }
+    async function loadDocuments() {
+      try {
+        const docs = await db.select<any>('documents');
+        const metadata = docs.map((doc: any) => ({
+          docId: doc.id,
+          title: doc.title,
+          filePath: doc.file_path,
+          createdAt: doc.created_at,
+        }));
+        setCustomPdfs(metadata);
+      } catch (err) {
+        Logger.error('useLibrary', 'Failed to load user documents', err);
       }
-      launchFromNav();
     }
-  }, [location.state]);
+    loadDocuments();
+  }, []);
 
   // Load last read pages for materials
   const refreshLastReadPages = useCallback(async () => {
@@ -63,9 +63,22 @@ export function useLibrary() {
   }, []);
 
   // Handle uploaded custom PDF session
-  const handleCustomFileLoaded = useCallback((session: IMaterialActiveSession) => {
-    setCustomPdfs((prev) => [session, ...prev]);
-    setActiveSession(session);
+  const handleCustomFileLoaded = useCallback((metadata: IDocumentMetadata) => {
+    setCustomPdfs((prev) => [metadata, ...prev]);
+  }, []);
+
+  // Open user document
+  const handleOpenUserDocument = useCallback(async (metadata: IDocumentMetadata) => {
+    try {
+      const buffer = await PdfStorageService.readPdfFile(metadata.filePath, metadata.docId);
+      setActiveSession({
+        docId: metadata.docId,
+        title: metadata.title,
+        buffer,
+      });
+    } catch (err) {
+      Logger.error('useLibrary', 'Error opening user document', err);
+    }
   }, []);
 
   // Handle Knowledge Bridge Selection
@@ -97,6 +110,7 @@ export function useLibrary() {
     setShowKnowledgeBridge,
     handleOpenSample,
     handleCustomFileLoaded,
+    handleOpenUserDocument,
     handleSelectKnowledgeItem,
     closeSession,
     goToHome,

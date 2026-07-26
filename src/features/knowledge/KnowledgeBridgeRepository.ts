@@ -4,7 +4,7 @@
  */
 
 import { HighlightRepository } from '../../core/highlight/HighlightRepository';
-import { ReadingNoteRepository } from '../notes/ReadingNoteRepository';
+import { ReadingNoteRepository } from '../../core/notes/ReadingNoteRepository';
 import { SAMPLE_PDF_DOCUMENTS } from '../../data/samplePdfs';
 import { Logger } from '../../infrastructure/logger/Logger';
 import { IKnowledgeBridgeItem } from '../../entities/knowledge/KnowledgeBridgeModel';

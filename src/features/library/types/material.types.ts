@@ -18,6 +18,13 @@ export interface IMaterial {
   isCustom?: boolean;
 }
 
+export interface IDocumentMetadata {
+  docId: string;
+  title: string;
+  filePath: string;
+  createdAt: string;
+}
+
 export interface IMaterialActiveSession {
   docId: string;
   title: string;
