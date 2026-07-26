@@ -11,6 +11,7 @@ import { copyToClipboard } from '../../shared/utils/copyToClipboard';
 
 interface HighlightToolbarProps {
   position: { x: number; y: number };
+  bottomY?: number;
   selectedText?: string;
   selectedColor?: HighlightColor;
   initialNote?: string;
@@ -24,6 +25,7 @@ const ALL_COLORS: HighlightColor[] = ['yellow', 'green', 'blue', 'purple', 'oran
 
 export const HighlightToolbar: React.FC<HighlightToolbarProps> = ({
   position,
+  bottomY,
   selectedText = '',
   selectedColor,
   initialNote = '',
@@ -84,7 +86,12 @@ export const HighlightToolbar: React.FC<HighlightToolbarProps> = ({
   };
 
   const clampedX = Math.max(160, Math.min(window.innerWidth - 180, position.x));
-  const clampedY = Math.max(65, position.y - 54);
+  
+  const hasSpaceAbove = position.y - 54 >= 65;
+  const targetY = (bottomY !== undefined && !hasSpaceAbove)
+    ? bottomY + 12
+    : position.y - 54;
+  const clampedY = Math.max(65, targetY);
 
   return (
     <motion.div

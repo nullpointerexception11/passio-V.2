@@ -12,6 +12,7 @@ export interface ISelectionResult {
   rects: IHighlightRect[];
   boundingClientX: number;
   boundingClientY: number;
+  boundingClientYBottom: number;
 }
 
 class HighlightEngineService {
@@ -57,6 +58,7 @@ class HighlightEngineService {
       let minTop = Infinity;
       let minLeft = Infinity;
       let maxRight = -Infinity;
+      let maxBottom = -Infinity;
 
       const invWidth = 1 / pageRect.width;
       const invHeight = 1 / pageRect.height;
@@ -74,6 +76,10 @@ class HighlightEngineService {
         }
         if (rect.left + rect.width > maxRight) {
           maxRight = rect.left + rect.width;
+        }
+        const rectBottom = rect.top + rect.height;
+        if (rectBottom > maxBottom) {
+          maxBottom = rectBottom;
         }
 
         const relX = (rect.left - pageRect.left) * invWidth;
@@ -99,6 +105,7 @@ class HighlightEngineService {
         ? (minLeft + maxRight) / 2 
         : pageRect.left + pageRect.width / 2;
       const boundingClientY = minTop !== Infinity ? minTop : pageRect.top;
+      const boundingClientYBottom = maxBottom !== -Infinity ? maxBottom : (minTop !== Infinity ? minTop + 20 : pageRect.top + 20);
 
       return {
         pageNumber,
@@ -106,6 +113,7 @@ class HighlightEngineService {
         rects: mergedRects,
         boundingClientX,
         boundingClientY,
+        boundingClientYBottom,
       };
     } catch (err) {
       Logger.error('HighlightEngine', 'Failed to extract normalized selection rects', err);
@@ -114,53 +122,71 @@ class HighlightEngineService {
   }
 
   /**
-   * Merges horizontally adjacent or overlapping rects on the same line to reduce DOM elements and fix overlapping shadow artifacts.
+   * Merges rects on the same line into a single continuous rect.
    */
   mergeAdjacentRects(rects: IHighlightRect[]): IHighlightRect[] {
     if (!rects || rects.length <= 1) return rects || [];
 
-    // Sort primarily by vertical position y, then horizontal x
-    const sorted = rects.slice().sort((a, b) => {
+    // Calculate Y-centers for each rect
+    const withCenter = rects.map((rect) => ({
+      rect,
+      yCenter: rect.y + rect.height * 0.5,
+    }));
+
+    // Sort by Y-center ascending
+    withCenter.sort((a, b) => a.yCenter - b.yCenter);
+
+    // Group rects into lines
+    const groups: Array<typeof withCenter> = [];
+
+    for (const item of withCenter) {
+      let matchedGroup: typeof withCenter | null = null;
+      for (const group of groups) {
+        const rep = group[0];
+        if (Math.abs(item.yCenter - rep.yCenter) < 0.015) {
+          matchedGroup = group;
+          break;
+        }
+      }
+
+      if (matchedGroup) {
+        matchedGroup.push(item);
+      } else {
+        groups.push([item]);
+      }
+    }
+
+    // Produce a single rectangle for each line group
+    const merged: IHighlightRect[] = groups.map((group) => {
+      let minX = Infinity;
+      let maxXRight = -Infinity;
+      let minY = Infinity;
+      let maxYBottom = -Infinity;
+
+      for (const item of group) {
+        const r = item.rect;
+        if (r.x < minX) minX = r.x;
+        if (r.x + r.width > maxXRight) maxXRight = r.x + r.width;
+        if (r.y < minY) minY = r.y;
+        if (r.y + r.height > maxYBottom) maxYBottom = r.y + r.height;
+      }
+
+      return {
+        x: minX,
+        y: minY,
+        width: maxXRight - minX,
+        height: maxYBottom - minY,
+      };
+    });
+
+    // Sort the final merged rects primarily by y, then by x
+    merged.sort((a, b) => {
       const yDiff = a.y - b.y;
-      if (Math.abs(yDiff) > 0.012) {
+      if (Math.abs(yDiff) > 0.01) {
         return yDiff;
       }
       return a.x - b.x;
     });
-
-    const merged: IHighlightRect[] = [];
-    let current = sorted[0];
-
-    for (let i = 1; i < sorted.length; i++) {
-      const rect = sorted[i];
-
-      const currentYCenter = current.y + current.height * 0.5;
-      const rectYCenter = rect.y + rect.height * 0.5;
-      const isSameLine = Math.abs(currentYCenter - rectYCenter) < 0.015 || Math.abs(current.y - rect.y) < 0.012;
-
-      const currentRight = current.x + current.width;
-      const isAdjacentOrOverlapping = rect.x <= currentRight + 0.02;
-
-      if (isSameLine && isAdjacentOrOverlapping) {
-        const newRight = currentRight > rect.x + rect.width ? currentRight : rect.x + rect.width;
-        const newY = current.y < rect.y ? current.y : rect.y;
-        const newH = current.height > rect.height ? current.height : rect.height;
-
-        current = {
-          x: current.x,
-          y: newY,
-          width: newRight - current.x,
-          height: newH,
-        };
-      } else {
-        merged.push(current);
-        current = rect;
-      }
-    }
-
-    if (current) {
-      merged.push(current);
-    }
 
     return merged;
   }

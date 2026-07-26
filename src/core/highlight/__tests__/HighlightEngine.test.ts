@@ -49,12 +49,26 @@ describe('HighlightEngine - Usage & Performance Tests', () => {
       expect(merged[1].y).toBe(0.30);
     });
 
-    it('does NOT merge rects on the same line if horizontally far apart', () => {
-      const rect1: IHighlightRect = { x: 0.10, y: 0.20, width: 0.10, height: 0.04 };
-      const rect2: IHighlightRect = { x: 0.60, y: 0.20, width: 0.10, height: 0.04 }; // Gap = 0.40
+    it('merges 3 separate word rects on the same line into a single continuous rect', () => {
+      const word1: IHighlightRect = { x: 0.10, y: 0.20, width: 0.10, height: 0.04 };
+      const word2: IHighlightRect = { x: 0.25, y: 0.20, width: 0.10, height: 0.04 };
+      const word3: IHighlightRect = { x: 0.40, y: 0.20, width: 0.10, height: 0.04 };
 
-      const merged = HighlightEngine.mergeAdjacentRects([rect1, rect2]);
+      const merged = HighlightEngine.mergeAdjacentRects([word1, word2, word3]);
+      expect(merged.length).toBe(1);
+      expect(merged[0].x).toBe(0.10);
+      expect(merged[0].width).toBeCloseTo(0.40); // Max right (0.40 + 0.10) - Min left (0.10)
+      expect(merged[0].y).toBe(0.20);
+    });
+
+    it('keeps rects on two different lines completely separate', () => {
+      const rectLine1: IHighlightRect = { x: 0.10, y: 0.20, width: 0.30, height: 0.04 };
+      const rectLine2: IHighlightRect = { x: 0.15, y: 0.35, width: 0.25, height: 0.04 };
+
+      const merged = HighlightEngine.mergeAdjacentRects([rectLine1, rectLine2]);
       expect(merged.length).toBe(2);
+      expect(merged[0].y).toBe(0.20);
+      expect(merged[1].y).toBe(0.35);
     });
   });
 
@@ -122,6 +136,33 @@ describe('HighlightEngine - Usage & Performance Tests', () => {
       expect(result?.rects[0].y).toBeCloseTo(0.20);
       expect(result?.rects[0].width).toBeCloseTo(0.50);
       expect(result?.rects[0].height).toBeCloseTo(0.025);
+    });
+
+    it('calculates boundingClientYBottom correctly based on the maximum rect bottom', () => {
+      const mockRange = {
+        getClientRects: () => [
+          { left: 60, top: 160, width: 300, height: 20 },
+          { left: 60, top: 190, width: 250, height: 25 },
+        ],
+        getBoundingClientRect: () => ({ left: 60, top: 160, width: 300, height: 55 }),
+      };
+
+      const mockSelection = {
+        isCollapsed: false,
+        toString: () => 'Multi line',
+        getRangeAt: () => mockRange,
+      } as unknown as Selection;
+
+      const mockContainer = {
+        getBoundingClientRect: () => ({ left: 0, top: 0, width: 600, height: 800 }),
+      } as HTMLElement;
+
+      const result = HighlightEngine.extractNormalizedSelection(mockSelection, mockContainer, 1);
+      expect(result).not.toBeNull();
+      // rect 1 bottom = 160 + 20 = 180
+      // rect 2 bottom = 190 + 25 = 215
+      // maxBottom = 215
+      expect(result?.boundingClientYBottom).toBe(215);
     });
 
     it('clamps normalized coordinates within 0..1 boundary', () => {

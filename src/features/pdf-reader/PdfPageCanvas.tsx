@@ -76,7 +76,7 @@ export const PdfPageCanvas: React.FC<PdfPageCanvasProps> = React.memo(({
   // Selection & Toolbar State
   const [pendingSelection, setPendingSelection] = useState<ISelectionResult | null>(null);
   const [selectedHighlight, setSelectedHighlight] = useState<IHighlightFragment | null>(null);
-  const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number } | null>(null);
+  const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number; bottomY?: number } | null>(null);
 
   // Load and subscribe to highlights for this page
   const refreshHighlights = useCallback(() => {
@@ -110,7 +110,22 @@ export const PdfPageCanvas: React.FC<PdfPageCanvasProps> = React.memo(({
             if (hitFragment) {
               setSelectedHighlight(hitFragment);
               setPendingSelection(null);
-              setToolbarPos({ x: clientX, y: clientY });
+
+              const pageRect = targetElement.getBoundingClientRect();
+              let minRelTop = Infinity;
+              let maxRelBottom = -Infinity;
+              for (const rect of hitFragment.rects) {
+                if (rect.y < minRelTop) minRelTop = rect.y;
+                if (rect.y + rect.height > maxRelBottom) maxRelBottom = rect.y + rect.height;
+              }
+              const absTop = pageRect.top + minRelTop * pageRect.height;
+              const absBottom = pageRect.top + maxRelBottom * pageRect.height;
+
+              setToolbarPos({
+                x: clientX,
+                y: absTop,
+                bottomY: absBottom,
+              });
               return;
             }
           }
@@ -134,7 +149,11 @@ export const PdfPageCanvas: React.FC<PdfPageCanvasProps> = React.memo(({
       if (result && result.rects.length > 0) {
         setSelectedHighlight(null);
         setPendingSelection(result);
-        setToolbarPos({ x: result.boundingClientX, y: result.boundingClientY });
+        setToolbarPos({
+          x: result.boundingClientX,
+          y: result.boundingClientY,
+          bottomY: result.boundingClientYBottom,
+        });
       }
     });
   }, [pageNumber, pageHighlights]);
@@ -398,7 +417,27 @@ export const PdfPageCanvas: React.FC<PdfPageCanvasProps> = React.memo(({
                 e.stopPropagation();
                 setSelectedHighlight(fragment);
                 setPendingSelection(null);
-                setToolbarPos({ x: e.clientX, y: e.clientY });
+
+                const targetElement = innerWrapperRef.current || pageBoxRef.current;
+                if (targetElement) {
+                  const pageRect = targetElement.getBoundingClientRect();
+                  let minRelTop = Infinity;
+                  let maxRelBottom = -Infinity;
+                  for (const rect of fragment.rects) {
+                    if (rect.y < minRelTop) minRelTop = rect.y;
+                    if (rect.y + rect.height > maxRelBottom) maxRelBottom = rect.y + rect.height;
+                  }
+                  const absTop = pageRect.top + minRelTop * pageRect.height;
+                  const absBottom = pageRect.top + maxRelBottom * pageRect.height;
+
+                  setToolbarPos({
+                    x: e.clientX,
+                    y: absTop,
+                    bottomY: absBottom,
+                  });
+                } else {
+                  setToolbarPos({ x: e.clientX, y: e.clientY });
+                }
               }}
             />
           )}
@@ -424,6 +463,7 @@ export const PdfPageCanvas: React.FC<PdfPageCanvasProps> = React.memo(({
         {toolbarPos && (pendingSelection || selectedHighlight) && (
           <HighlightToolbar
             position={toolbarPos}
+            bottomY={toolbarPos.bottomY}
             selectedText={selectedHighlight ? selectedHighlight.selectedText : pendingSelection?.selectedText}
             selectedColor={selectedHighlight?.color}
             initialNote={selectedHighlight?.note}
