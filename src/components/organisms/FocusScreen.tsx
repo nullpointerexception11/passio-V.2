@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Plus, Book, Calendar, ChevronRight, Moon, Sun, Trash2 } from 'lucide-react';
 import { useTheme } from '../../core/theme/ThemeContext';
 import { Logger } from '../../core/logger/Logger';
@@ -15,6 +15,7 @@ import { WritingEditorScreen } from './WritingEditorScreen';
 
 export const FocusScreen: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { themeType, toggleTheme } = useTheme();
 
   // State
@@ -23,7 +24,7 @@ export const FocusScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isNewModalOpen, setIsNewModalOpen] = useState<boolean>(false);
 
-  // Load notebooks on mount
+  // Load notebooks on mount & handle location.state or saved last active notebook
   useEffect(() => {
     async function loadNotebooks() {
       setIsLoading(true);
@@ -31,6 +32,18 @@ export const FocusScreen: React.FC = () => {
         Logger.info('FocusScreen', 'Loading Yazıhane notebooks list...');
         const list = await NotebookService.getNotebooks();
         setNotebooks(list);
+
+        const targetId =
+          (location.state as { notebookId?: string } | undefined)?.notebookId ||
+          localStorage.getItem('passio_last_active_notebook_id');
+
+        if (targetId) {
+          const matched = list.find((nb) => nb.metadata.id === targetId);
+          if (matched) {
+            setActiveNotebook(matched);
+            window.history.replaceState({}, document.title);
+          }
+        }
       } catch (err) {
         Logger.error('FocusScreen', 'Failed to load notebooks list', err);
       } finally {
@@ -39,7 +52,13 @@ export const FocusScreen: React.FC = () => {
     }
 
     loadNotebooks();
-  }, []);
+  }, [location.state]);
+
+  useEffect(() => {
+    if (activeNotebook?.metadata?.id) {
+      localStorage.setItem('passio_last_active_notebook_id', activeNotebook.metadata.id);
+    }
+  }, [activeNotebook]);
 
   /**
    * Create Notebook Handler
@@ -97,7 +116,10 @@ export const FocusScreen: React.FC = () => {
     return (
       <WritingEditorScreen
         notebook={activeNotebook}
-        onBack={() => setActiveNotebook(null)}
+        onBack={() => {
+          localStorage.removeItem('passio_last_active_notebook_id');
+          setActiveNotebook(null);
+        }}
         onNotebookUpdated={handleNotebookUpdated}
       />
     );

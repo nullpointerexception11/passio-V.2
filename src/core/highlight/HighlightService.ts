@@ -55,6 +55,16 @@ class HighlightDomainService {
   }
 
   /**
+   * Retrieves all cached highlights for a given material
+   */
+  getHighlightsForMaterial(materialId: string): IHighlightFragment[] {
+    if (!this.loadedMaterials.has(materialId) && !this.loadingPromises.has(materialId)) {
+      this.loadHighlights(materialId);
+    }
+    return this.activeHighlights.get(materialId) || [];
+  }
+
+  /**
    * Creates a new Knowledge Fragment highlight
    */
   async createHighlight(
@@ -141,16 +151,22 @@ class HighlightDomainService {
    * Deletes a Knowledge Fragment highlight
    */
   async deleteHighlight(materialId: string, highlightId: string): Promise<void> {
-    if (!this.loadedMaterials.has(materialId)) {
+    if (materialId && !this.loadedMaterials.has(materialId)) {
       await this.loadHighlights(materialId);
     }
 
     try {
       await HighlightRepository.deleteHighlight(highlightId);
       
-      const currentList = this.activeHighlights.get(materialId) || [];
-      const updatedList = currentList.filter((item) => item.id !== highlightId);
-      this.activeHighlights.set(materialId, updatedList);
+      const targetMatId = materialId || Array.from(this.activeHighlights.entries()).find(([_, list]) =>
+        list.some((item) => item.id === highlightId)
+      )?.[0];
+
+      if (targetMatId) {
+        const currentList = this.activeHighlights.get(targetMatId) || [];
+        const updatedList = currentList.filter((item) => item.id !== highlightId);
+        this.activeHighlights.set(targetMatId, updatedList);
+      }
       
       this.notifyListeners();
       Logger.info('HighlightService', `Removed highlight fragment [${highlightId}]`);

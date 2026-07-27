@@ -29,6 +29,7 @@ export interface INotebookMetadata {
   title: string;
   type: NotebookType;
   wordCount: number;
+  tags?: string[];
   createdAt: string;
   updatedAt: string;
 }

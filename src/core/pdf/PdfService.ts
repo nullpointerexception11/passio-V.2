@@ -82,12 +82,21 @@ class PdfService {
    */
   async getLastReadPage(docId: string): Promise<number> {
     try {
+      const localValue = localStorage.getItem(`pdf_last_page_${docId}`);
+      if (localValue) {
+        const page = parseInt(localValue, 10);
+        if (!isNaN(page) && page > 0) {
+          return page;
+        }
+      }
+
       const records = await db.select<{ key: string; value: string }>('settings', {
         key: `pdf_last_page_${docId}`,
       });
       if (records.length > 0) {
         const page = parseInt(records[0].value, 10);
         if (!isNaN(page) && page > 0) {
+          localStorage.setItem(`pdf_last_page_${docId}`, page.toString());
           Logger.info('PdfService', `Retrieved saved last read page for [${docId}]: Page ${page}`);
           return page;
         }
@@ -103,6 +112,8 @@ class PdfService {
    */
   async saveLastReadPage(docId: string, pageNumber: number): Promise<void> {
     try {
+      localStorage.setItem(`pdf_last_page_${docId}`, pageNumber.toString());
+
       const key = `pdf_last_page_${docId}`;
       const now = new Date().toISOString();
 

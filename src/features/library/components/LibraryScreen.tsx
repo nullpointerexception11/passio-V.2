@@ -3,13 +3,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useLibrary } from '../hooks/useLibrary';
 import { useFileImport } from '../hooks/useFileImport';
 import { LibraryHeader } from './LibraryHeader';
 import { ImportSection } from './ImportSection';
 import { RecentMaterials } from './RecentMaterials';
 import { SampleMaterials } from './SampleMaterials';
+import { ContinueReadingSection, IContinueReadingItem } from './ContinueReadingSection';
+import { CollectionsFilterBar } from './CollectionsFilterBar';
 import { EmptyState } from './EmptyState';
 import { ReaderLauncher } from './ReaderLauncher';
 import { KnowledgeBridgeModal } from '../../../components/molecules/KnowledgeBridgeModal';
@@ -22,14 +24,27 @@ export const LibraryScreen: React.FC = () => {
     lastReadPages,
     showKnowledgeBridge,
     setShowKnowledgeBridge,
+    collections,
+    docCollectionMap,
+    highlightsMap,
+    notesMap,
+    statuses,
+    lastOpenedMap,
+    selectedCollectionId,
+    selectedStatus,
+    setSelectedCollectionId,
+    setSelectedStatus,
     handleOpenSample,
     handleCustomFileLoaded,
     handleOpenUserDocument,
     handleSelectKnowledgeItem,
     handleDeleteDocument,
+    handleCycleStatus,
+    handleCreateCollection,
+    handleDeleteCollection,
+    handleToggleDocCollection,
     closeSession,
     goToHome,
-    setActiveSession,
   } = useLibrary();
 
   const { fileInputRef, triggerFilePicker, handleFileChange } = useFileImport({
@@ -37,6 +52,34 @@ export const LibraryScreen: React.FC = () => {
   });
 
   const hasMaterials = sampleMaterials.length > 0 || customPdfs.length > 0;
+
+  // Build Continue Reading list (docs with progress > 1 page or opened)
+  const continueReadingItems = useMemo<IContinueReadingItem[]>(() => {
+    const items: IContinueReadingItem[] = [];
+
+    for (const doc of sampleMaterials) {
+      const page = lastReadPages[doc.id] || 1;
+      const opened = lastOpenedMap[doc.id];
+      if (page > 1 || opened) {
+        items.push({
+          material: doc,
+          lastReadPage: page,
+          totalPages: doc.pageCount || 10,
+          lastOpenedAt: opened,
+        });
+      }
+    }
+
+    // Sort by last opened date or last read page
+    items.sort((a, b) => {
+      if (a.lastOpenedAt && b.lastOpenedAt) {
+        return new Date(b.lastOpenedAt).getTime() - new Date(a.lastOpenedAt).getTime();
+      }
+      return b.lastReadPage - a.lastReadPage;
+    });
+
+    return items;
+  }, [sampleMaterials, lastReadPages, lastOpenedMap]);
 
   return (
     <div
@@ -62,18 +105,56 @@ export const LibraryScreen: React.FC = () => {
           <EmptyState />
         ) : (
           <>
-            {/* Custom Uploaded Local Materials */}
-            <RecentMaterials 
-              customPdfs={customPdfs} 
-              onSelect={handleOpenUserDocument} 
-              onDelete={handleDeleteDocument} 
+            {/* 1. Continue Reading Section */}
+            <ContinueReadingSection
+              items={continueReadingItems}
+              onSelect={(material, page) => handleOpenSample(material, page)}
             />
 
-            {/* Curated Sample Materials Collection */}
+            {/* 2. Collections & Reading Status Filter Bar */}
+            <CollectionsFilterBar
+              collections={collections}
+              selectedCollectionId={selectedCollectionId}
+              selectedStatus={selectedStatus}
+              onSelectCollection={setSelectedCollectionId}
+              onSelectStatus={setSelectedStatus}
+              onCreateCollection={handleCreateCollection}
+              onDeleteCollection={handleDeleteCollection}
+            />
+
+            {/* 3. Custom Uploaded Local Materials */}
+            <RecentMaterials
+              customPdfs={customPdfs}
+              collections={collections}
+              docCollectionMap={docCollectionMap}
+              highlightsMap={highlightsMap}
+              notesMap={notesMap}
+              statuses={statuses}
+              lastOpenedMap={lastOpenedMap}
+              lastReadPages={lastReadPages}
+              selectedCollectionId={selectedCollectionId}
+              selectedStatus={selectedStatus}
+              onSelect={handleOpenUserDocument}
+              onDelete={handleDeleteDocument}
+              onCycleStatus={handleCycleStatus}
+              onToggleCollection={handleToggleDocCollection}
+            />
+
+            {/* 4. Curated Sample Materials Collection */}
             <SampleMaterials
               materials={sampleMaterials}
               lastReadPages={lastReadPages}
+              collections={collections}
+              docCollectionMap={docCollectionMap}
+              highlightsMap={highlightsMap}
+              notesMap={notesMap}
+              statuses={statuses}
+              lastOpenedMap={lastOpenedMap}
+              selectedCollectionId={selectedCollectionId}
+              selectedStatus={selectedStatus}
               onSelect={handleOpenSample}
+              onCycleStatus={handleCycleStatus}
+              onToggleCollection={handleToggleDocCollection}
             />
           </>
         )}

@@ -31,11 +31,25 @@ export function usePdfReader({
   const [totalPages, setTotalPages] = useState<number>(0);
 
   // PDF View Settings
-  const [scale, setScale] = useState<number>(1.0);
+  const [scale, setScale] = useState<number>(() => {
+    const saved = localStorage.getItem(`passio_pdf_zoom_${docId}`) || localStorage.getItem('passio_pdf_zoom_global');
+    if (saved) {
+      const parsed = parseFloat(saved);
+      if (!isNaN(parsed) && parsed >= 0.5 && parsed <= 3.0) return parsed;
+    }
+    return 1.0;
+  });
   const [fitMode, setFitMode] = useState<'width' | 'page' | 'none'>('width');
   const [autoCropMargins, setAutoCropMargins] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<'continuous' | 'single'>('continuous');
   const [showSettings, setShowSettings] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (docId) {
+      localStorage.setItem(`passio_pdf_zoom_${docId}`, scale.toString());
+      localStorage.setItem('passio_pdf_zoom_global', scale.toString());
+    }
+  }, [docId, scale]);
 
   // Notes Engine State
   const [showNoteMenu, setShowNoteMenu] = useState<boolean>(false);

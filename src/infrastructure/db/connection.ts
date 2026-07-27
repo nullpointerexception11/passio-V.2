@@ -43,10 +43,50 @@ class BrowserMockDatabaseService implements IDatabaseService {
     // Seed initial collections and settings
     this.store['documents'] = JSON.parse(localStorage.getItem('passio_docs') || '{}');
     this.store['collections'] = JSON.parse(localStorage.getItem('passio_collections') || '{}');
+    this.store['document_collections'] = JSON.parse(localStorage.getItem('passio_doc_collections') || '{}');
     this.store['settings'] = JSON.parse(localStorage.getItem('passio_settings') || '{}');
     this.store['highlights'] = JSON.parse(localStorage.getItem('passio_highlights') || '{}');
     this.store['reading_notes'] = JSON.parse(localStorage.getItem('passio_reading_notes') || '{}');
     this.store['notebooks'] = JSON.parse(localStorage.getItem('passio_notebooks') || '{}');
+
+    // Seed default sample collections if empty
+    if (Object.keys(this.store['collections']).length === 0) {
+      this.store['collections'] = {
+        'col-felsefe': {
+          id: 'col-felsefe',
+          name: 'Felsefe & Tasarım',
+          description: 'Sadelik ve düşünce',
+          color: 'amber',
+          created_at: new Date('2026-07-20T10:00:00Z').toISOString(),
+          updated_at: new Date('2026-07-20T10:00:00Z').toISOString(),
+        },
+        'col-edebiyat': {
+          id: 'col-edebiyat',
+          name: 'Klasikler & Edebiyat',
+          description: 'Dünya klasikleri',
+          color: 'purple',
+          created_at: new Date('2026-07-20T10:00:00Z').toISOString(),
+          updated_at: new Date('2026-07-20T10:00:00Z').toISOString(),
+        },
+      };
+      this.persist('collections');
+    }
+
+    if (Object.keys(this.store['document_collections']).length === 0) {
+      this.store['document_collections'] = {
+        'link-1': {
+          id: 'link-1',
+          document_id: 'passio-philosophy-manifesto',
+          collection_id: 'col-felsefe',
+        },
+        'link-2': {
+          id: 'link-2',
+          document_id: 'dostoyevski-notes-from-underground',
+          collection_id: 'col-edebiyat',
+        },
+      };
+      this.persist('document_collections');
+    }
 
     // Seed default sample highlights if empty
     if (Object.keys(this.store['highlights']).length === 0) {
@@ -132,6 +172,7 @@ class BrowserMockDatabaseService implements IDatabaseService {
   private persist(table: string) {
     if (table === 'documents') localStorage.setItem('passio_docs', JSON.stringify(this.store['documents']));
     if (table === 'collections') localStorage.setItem('passio_collections', JSON.stringify(this.store['collections']));
+    if (table === 'document_collections') localStorage.setItem('passio_doc_collections', JSON.stringify(this.store['document_collections']));
     if (table === 'settings') localStorage.setItem('passio_settings', JSON.stringify(this.store['settings']));
     if (table === 'highlights') localStorage.setItem('passio_highlights', JSON.stringify(this.store['highlights']));
     if (table === 'reading_notes') localStorage.setItem('passio_reading_notes', JSON.stringify(this.store['reading_notes']));

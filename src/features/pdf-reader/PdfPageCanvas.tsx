@@ -42,6 +42,7 @@ const getReadingModeStyles = (mode: PdfReadingMode) => {
 
 interface PdfPageCanvasProps {
   docId: string;
+  docTitle: string;
   pdfDoc: pdfjsLib.PDFDocumentProxy;
   pageNumber: number;
   scale: number;
@@ -52,6 +53,7 @@ interface PdfPageCanvasProps {
 
 export const PdfPageCanvas: React.FC<PdfPageCanvasProps> = React.memo(({
   docId,
+  docTitle,
   pdfDoc,
   pageNumber,
   scale,
@@ -339,6 +341,32 @@ export const PdfPageCanvas: React.FC<PdfPageCanvasProps> = React.memo(({
     }
   };
 
+  // Double click immediate word highlight
+  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
+    const selection = window.getSelection();
+    const targetElement = innerWrapperRef.current || pageBoxRef.current;
+    if (!targetElement || !selection || selection.isCollapsed) return;
+
+    const result = HighlightEngine.extractNormalizedSelection(selection, targetElement, pageNumber);
+    if (result && result.rects.length > 0 && result.selectedText.trim()) {
+      e.stopPropagation();
+      e.preventDefault();
+
+      HighlightService.createHighlight(
+        docId,
+        pageNumber,
+        result.selectedText,
+        result.rects,
+        'yellow'
+      );
+
+      selection.removeAllRanges();
+      setPendingSelection(null);
+      setSelectedHighlight(null);
+      setToolbarPos(null);
+    }
+  }, [docId, pageNumber]);
+
   const estimatedWidth = Math.floor(pageDimensions.width * scale);
   const estimatedHeight = Math.floor(estimatedWidth / aspectRatio);
 
@@ -377,6 +405,7 @@ export const PdfPageCanvas: React.FC<PdfPageCanvasProps> = React.memo(({
         {/* Inner Content Wrapper */}
         <div
           ref={innerWrapperRef}
+          onDoubleClick={handleDoubleClick}
           className="relative h-full transition-transform duration-300 mx-auto flex items-center justify-center select-text"
           style={{
             width: `${estimatedWidth}px`,
@@ -467,6 +496,8 @@ export const PdfPageCanvas: React.FC<PdfPageCanvasProps> = React.memo(({
             selectedText={selectedHighlight ? selectedHighlight.selectedText : pendingSelection?.selectedText}
             selectedColor={selectedHighlight?.color}
             initialNote={selectedHighlight?.note}
+            bookTitle={docTitle}
+            pageNumber={pageNumber}
             onSelectColor={handleSelectColor}
             onDelete={handleDeleteHighlight}
             onClose={() => {

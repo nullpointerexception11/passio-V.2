@@ -58,11 +58,13 @@ export class WritingService {
   }
 
   /**
-   * Helper to count words and calculate estimated reading time.
+   * Helper to count words, characters and calculate estimated reading time.
    */
   static calculateTextStats(text: string) {
-    const wordCount = NotebookService.countWords(text);
+    const cleanText = (text || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    const wordCount = cleanText ? cleanText.split(/\s+/).filter(Boolean).length : 0;
+    const characterCount = cleanText.length;
     const readingTimeMinutes = Math.max(1, Math.ceil(wordCount / 200));
-    return { wordCount, readingTimeMinutes };
+    return { wordCount, characterCount, readingTimeMinutes };
   }
 }

@@ -13,6 +13,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface PdfReaderEngineProps {
   docId: string;
+  docTitle: string;
   pdfDoc: pdfjsLib.PDFDocumentProxy;
   scale: number;
   fitMode: 'width' | 'page' | 'none';
@@ -24,6 +25,7 @@ interface PdfReaderEngineProps {
 
 export const PdfReaderEngine: React.FC<PdfReaderEngineProps> = ({
   docId,
+  docTitle,
   pdfDoc,
   scale,
   fitMode,
@@ -177,6 +179,7 @@ export const PdfReaderEngine: React.FC<PdfReaderEngineProps> = ({
               <div key={`pdf-page-wrapper-${pageNum}`} className={`flex justify-center w-full py-4 ${fitMode === 'width' ? 'px-0' : 'px-4'}`}>
                 <PdfPageCanvas
                   docId={docId}
+                  docTitle={docTitle}
                   pdfDoc={pdfDoc}
                   pageNumber={pageNum}
                   scale={computedScale}
@@ -198,6 +201,7 @@ export const PdfReaderEngine: React.FC<PdfReaderEngineProps> = ({
           <PdfPageCanvas
             key={`pdf-single-page-${currentPage}`}
             docId={docId}
+            docTitle={docTitle}
             pdfDoc={pdfDoc}
             pageNumber={currentPage}
             scale={computedScale}

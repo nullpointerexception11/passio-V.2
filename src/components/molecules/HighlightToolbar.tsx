@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Check, Copy, MessageSquare, Trash2, X } from 'lucide-react';
+import { Check, Copy, MessageSquare, Trash2, X, Quote } from 'lucide-react';
 import { HighlightColor, HIGHLIGHT_COLOR_MAP } from '../../core/highlight/HighlightModel';
 import { copyToClipboard } from '../../shared/utils/copyToClipboard';
 
@@ -16,6 +16,8 @@ interface HighlightToolbarProps {
   selectedColor?: HighlightColor;
   initialNote?: string;
   isExisting?: boolean;
+  bookTitle?: string;
+  pageNumber?: number;
   onSelectColor: (color: HighlightColor, note?: string) => void;
   onDelete?: () => void;
   onClose?: () => void;
@@ -30,16 +32,19 @@ export const HighlightToolbar: React.FC<HighlightToolbarProps> = ({
   selectedColor,
   initialNote = '',
   isExisting = false,
+  bookTitle,
+  pageNumber,
   onSelectColor,
   onDelete,
   onClose,
 }) => {
   const [copied, setCopied] = useState(false);
+  const [quoteCopied, setQuoteCopied] = useState(false);
   const [showNoteInput, setShowNoteInput] = useState(Boolean(initialNote));
   const [noteText, setNoteText] = useState(initialNote);
   const [activeColor, setActiveColor] = useState<HighlightColor>(selectedColor || 'yellow');
 
-  // Keyboard accessibility (1-6 for colors, ESC to dismiss, C to copy text)
+  // Keyboard accessibility (1-6 for colors, ESC to dismiss, C to copy text, Q to copy Quote Block)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
@@ -50,6 +55,8 @@ export const HighlightToolbar: React.FC<HighlightToolbarProps> = ({
         onClose();
       } else if (e.key === 'c' || e.key === 'C') {
         handleCopyText();
+      } else if (e.key === 'q' || e.key === 'Q') {
+        handleCopyAsQuoteBlock();
       } else if (['1', '2', '3', '4', '5', '6'].includes(e.key)) {
         const idx = parseInt(e.key, 10) - 1;
         const color = ALL_COLORS[idx];
@@ -62,7 +69,7 @@ export const HighlightToolbar: React.FC<HighlightToolbarProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [noteText, onClose, onSelectColor]);
+  }, [noteText, onClose, onSelectColor, activeColor, selectedText, bookTitle, pageNumber]);
 
   const handleCopyText = async () => {
     if (!selectedText) return;
@@ -72,6 +79,49 @@ export const HighlightToolbar: React.FC<HighlightToolbarProps> = ({
       setTimeout(() => setCopied(false), 1800);
     } catch {
       // Fallback if clipboard API restricted
+    }
+  };
+
+  const handleCopyAsQuoteBlock = async () => {
+    if (!selectedText) return;
+    try {
+      const { CitationBuilder } = await import('../../features/knowledge/CitationBuilder');
+      const citationItem = {
+        id: 'temp',
+        type: 'highlight' as const,
+        preview: selectedText,
+        materialId: 'temp',
+        materialTitle: bookTitle || 'Belge',
+        pageNumber: pageNumber || 1,
+        author: 'Anonim',
+        createdAt: new Date().toISOString(),
+        tags: [],
+        color: activeColor,
+      };
+
+      const quoteBlockHtml = CitationBuilder.buildCitation(citationItem, { format: 'html' });
+      const quoteBlockMarkdown = CitationBuilder.buildCitation(citationItem, { format: 'markdown' });
+
+      // Copy both rich text/HTML and plain-text to clipboard so it pastes elegantly anywhere
+      const blobHtml = new Blob([quoteBlockHtml], { type: 'text/html' });
+      const blobText = new Blob([quoteBlockMarkdown], { type: 'text/plain' });
+      const dataItem = new ClipboardItem({
+        'text/html': blobHtml,
+        'text/plain': blobText,
+      });
+      await navigator.clipboard.write([dataItem]);
+
+      setQuoteCopied(true);
+      setTimeout(() => setQuoteCopied(false), 1800);
+    } catch {
+      // Fallback
+      try {
+        await navigator.clipboard.writeText(`> ${selectedText}\n\n— ${bookTitle || 'Belge'}, s. ${pageNumber || 1}`);
+        setQuoteCopied(true);
+        setTimeout(() => setQuoteCopied(false), 1800);
+      } catch {
+        // clipboard restricted
+      }
     }
   };
 
@@ -145,6 +195,17 @@ export const HighlightToolbar: React.FC<HighlightToolbarProps> = ({
         >
           {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
           {copied && <span className="text-[10px] text-emerald-400 font-medium">Kopyalandı</span>}
+        </button>
+
+        {/* Copy as Quote Block Action */}
+        <button
+          type="button"
+          onClick={handleCopyAsQuoteBlock}
+          title={quoteCopied ? 'Alıntı Kopyalandı!' : 'Alıntı Bloğu Kopyala (Q)'}
+          className="p-1.5 rounded-lg text-neutral-300 hover:text-white hover:bg-neutral-800 transition-colors flex items-center gap-1 text-xs cursor-pointer"
+        >
+          {quoteCopied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Quote className="w-3.5 h-3.5 text-amber-500" />}
+          {quoteCopied && <span className="text-[10px] text-emerald-400 font-medium">Kopyalandı</span>}
         </button>
 
         {/* Note Toggle Action */}

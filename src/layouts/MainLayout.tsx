@@ -18,7 +18,8 @@ import {
   EyeOff, 
   HardDrive,
   Home,
-  Archive
+  Archive,
+  Layout
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -54,6 +55,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
   const navItems = [
     { path: '/', label: 'Ana Salon', icon: Home },
+    { path: '/desk', label: 'Günün Masası', icon: Layout },
     { path: '/focus', label: 'Yazıhane', icon: PenTool },
     { path: '/library', label: 'Kütüphane', icon: BookOpen },
     { path: '/archive', label: 'Arşiv', icon: Archive },

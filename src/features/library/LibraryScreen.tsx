@@ -13,6 +13,7 @@ import { Logger } from '../../infrastructure/logger/Logger';
 import { useTheme } from '../theme/ThemeContext';
 import { KnowledgeBridgeModal } from '../knowledge/KnowledgeBridgeModal';
 import { IKnowledgeBridgeItem } from '../../entities/knowledge/KnowledgeBridgeModel';
+import { AccessTrackingService } from '../../core/access/AccessTrackingService';
 
 export interface IPdfActiveSession {
   docId: string;
@@ -33,12 +34,13 @@ export const LibraryScreen: React.FC = () => {
 
   useEffect(() => {
     const state = location.state as { materialId?: string; pageNumber?: number } | undefined;
-    if (state?.materialId) {
-      const materialId = state.materialId;
-      const targetPage = state.pageNumber || 1;
+    const materialId = state?.materialId || localStorage.getItem('passio_last_active_pdf_id');
+
+    if (materialId) {
+      const targetPage = state?.pageNumber;
 
       async function launchTargetFromNavigation() {
-        Logger.info('LibraryScreen', `Auto-launching target PDF [${materialId}] page [${targetPage}] from navigation`);
+        Logger.info('LibraryScreen', `Auto-launching PDF [${materialId}] targetPage [${targetPage || 'last read'}]`);
         const matchedSample = SAMPLE_PDF_DOCUMENTS.find(doc => doc.id === materialId);
         const title = matchedSample ? matchedSample.title : 'Belge';
         const content = matchedSample?.content || ['Varsayılan içerik'];
@@ -75,8 +77,15 @@ export const LibraryScreen: React.FC = () => {
     loadSavedPages();
   }, [activePdfSession]);
 
+  useEffect(() => {
+    if (activePdfSession?.docId) {
+      localStorage.setItem('passio_last_active_pdf_id', activePdfSession.docId);
+    }
+  }, [activePdfSession]);
+
   const handleOpenSamplePdf = async (doc: ISamplePdfDoc) => {
     try {
+      AccessTrackingService.trackAccess(doc.id, doc.title, 'pdf', `${doc.author} • ${doc.pageCount} Sayfa`);
       Logger.info('LibraryScreen', `Preparing sample PDF: ${doc.title}`);
       const buffer = await createDemoPdfBuffer(
         doc.title, 
@@ -84,6 +93,7 @@ export const LibraryScreen: React.FC = () => {
         doc.id === 'dostoyevski-notes-from-underground' ? 40 : 3
       );
       
+      localStorage.setItem('passio_last_active_pdf_id', doc.id);
       setActivePdfSession({
         docId: doc.id,
         title: doc.title,
@@ -320,7 +330,10 @@ export const LibraryScreen: React.FC = () => {
           docTitle={activePdfSession.title}
           sourceUrlOrBuffer={activePdfSession.buffer}
           initialPage={activePdfSession.targetPage}
-          onClose={() => setActivePdfSession(null)}
+          onClose={() => {
+            localStorage.removeItem('passio_last_active_pdf_id');
+            setActivePdfSession(null);
+          }}
         />
       )}
     </div>

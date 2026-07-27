@@ -4,18 +4,25 @@
  */
 
 import React from 'react';
-import { ArrowLeft, GitBranch, BookOpen, Sliders, RefreshCw, Check } from 'lucide-react';
+import { ArrowLeft, GitBranch, BookOpen, Sliders, RefreshCw, Check, Maximize2, Minimize2, AlignCenter, Zap } from 'lucide-react';
 import { INotebook } from '../../../core/notebooks/NotebookModel';
 
 interface WritingRoomHeaderProps {
   notebook: INotebook;
   saveStatus: 'saved' | 'saving' | 'error';
   wordCount: number;
+  characterCount: number;
+  readingTimeMinutes: number;
   isLeftPanelOpen: boolean;
   isRightPanelOpen: boolean;
+  isFocusMode: boolean;
+  isTypewriterMode: boolean;
   onBack: () => void;
   onToggleLeftPanel: () => void;
   onToggleRightPanel: () => void;
+  onToggleFocusMode: () => void;
+  onToggleTypewriterMode: () => void;
+  onOpenQuickNote: () => void;
   onOpenSettings: () => void;
 }
 
@@ -23,16 +30,23 @@ export const WritingRoomHeader: React.FC<WritingRoomHeaderProps> = ({
   notebook,
   saveStatus,
   wordCount,
+  characterCount,
+  readingTimeMinutes,
   isLeftPanelOpen,
   isRightPanelOpen,
+  isFocusMode,
+  isTypewriterMode,
   onBack,
   onToggleLeftPanel,
   onToggleRightPanel,
+  onToggleFocusMode,
+  onToggleTypewriterMode,
+  onOpenQuickNote,
   onOpenSettings,
 }) => {
   return (
     <header
-      className="h-14 px-6 border-b flex items-center justify-between shrink-0 select-none z-10"
+      className="h-14 px-6 border-b flex items-center justify-between shrink-0 select-none z-10 transition-all duration-300"
       style={{
         borderColor: 'var(--color-border-subtle)',
         backgroundColor: 'var(--color-bg-surface)',
@@ -62,29 +76,74 @@ export const WritingRoomHeader: React.FC<WritingRoomHeaderProps> = ({
 
       {/* Right side */}
       <div className="flex items-center gap-4">
-        {/* Save Status & Word Count */}
-        <div className="flex items-center gap-2 text-[11px] font-mono opacity-60">
-          <span className="flex items-center gap-1">
-            {saveStatus === 'saving' ? (
-              <>
-                <RefreshCw className="w-3 h-3 animate-spin text-amber-500" />
-                <span>Kaydediliyor...</span>
-              </>
-            ) : (
-              <>
-                <Check className="w-3 h-3 text-emerald-500" />
-                <span>Otomatik Kaydedildi</span>
-              </>
-            )}
-          </span>
-          <span>•</span>
+        {/* Writing Statistics: Only Words, Characters, Estimated Reading Time */}
+        <div className="hidden sm:flex items-center gap-2 text-[11px] font-mono opacity-65">
           <span>{wordCount} Kelime</span>
+          <span>•</span>
+          <span>{characterCount} Karakter</span>
+          <span>•</span>
+          <span>{readingTimeMinutes} dk Okuma</span>
+        </div>
+
+        <div className="h-4 w-px bg-current opacity-10 hidden sm:block" />
+
+        {/* Auto Save Status (Never displays a Save button) */}
+        <div className="flex items-center gap-1.5 text-[11px] font-mono opacity-60">
+          {saveStatus === 'saving' ? (
+            <>
+              <RefreshCw className="w-3 h-3 animate-spin text-amber-500" />
+              <span className="hidden md:inline">Kaydediliyor...</span>
+            </>
+          ) : (
+            <>
+              <Check className="w-3 h-3 text-emerald-500" />
+              <span className="hidden md:inline">Otomatik Kaydedildi</span>
+            </>
+          )}
         </div>
 
         <div className="h-4 w-px bg-current opacity-10" />
 
-        {/* Panel Toggles */}
+        {/* Quick Actions & Panel Toggles */}
         <div className="flex items-center gap-1">
+          {/* Quick Note Button */}
+          <button
+            onClick={onOpenQuickNote}
+            className="p-2 rounded-xl border transition-all cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 opacity-75 hover:opacity-100 flex items-center gap-1 text-xs font-mono"
+            style={{ borderColor: 'var(--color-border-subtle)' }}
+            title="Hızlı Not (CTRL + N)"
+          >
+            <Zap className="w-4 h-4 text-amber-500" />
+          </button>
+
+          {/* Typewriter Mode Toggle */}
+          <button
+            onClick={onToggleTypewriterMode}
+            className={`p-2 rounded-xl border transition-all cursor-pointer ${
+              isTypewriterMode
+                ? 'bg-amber-500/20 border-amber-500/50 text-amber-600 dark:text-amber-400 font-semibold'
+                : 'hover:bg-black/5 dark:hover:bg-white/5 opacity-70'
+            }`}
+            style={!isTypewriterMode ? { borderColor: 'var(--color-border-subtle)' } : {}}
+            title={isTypewriterMode ? 'Daktilo Modunu Kapat' : 'Daktilo Modu (İmleç Ortada)'}
+          >
+            <AlignCenter className="w-4 h-4" />
+          </button>
+
+          {/* Focus Mode Toggle */}
+          <button
+            onClick={onToggleFocusMode}
+            className={`p-2 rounded-xl border transition-all cursor-pointer ${
+              isFocusMode
+                ? 'bg-amber-500/20 border-amber-500/50 text-amber-600 dark:text-amber-400 font-semibold'
+                : 'hover:bg-black/5 dark:hover:bg-white/5 opacity-70'
+            }`}
+            style={!isFocusMode ? { borderColor: 'var(--color-border-subtle)' } : {}}
+            title={isFocusMode ? 'Odak Modundan Çık' : 'Odak Modu (Tam Ekran)'}
+          >
+            {isFocusMode ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          </button>
+
           {/* Left Panel Toggle (Bilgi Parçaları) */}
           <button
             onClick={onToggleLeftPanel}

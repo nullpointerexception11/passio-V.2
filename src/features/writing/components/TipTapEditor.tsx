@@ -11,10 +11,12 @@ import { INotebookSettings } from '../../../core/notebooks/NotebookModel';
 import { WritingBubbleMenu } from './WritingBubbleMenu';
 
 interface TipTapEditorProps {
+  notebookId?: string;
   initialContent: string;
   settings: INotebookSettings;
   onChange: (text: string) => void;
   onDropKnowledgeItem?: (itemJson: string) => void;
+  isTypewriterMode?: boolean;
   isLeftPanelOpen?: boolean;
   isRightPanelOpen?: boolean;
   onToggleLeftPanel?: () => void;
@@ -22,12 +24,16 @@ interface TipTapEditorProps {
 }
 
 export const TipTapEditor: React.FC<TipTapEditorProps> = ({
+  notebookId,
   initialContent,
   settings,
   onChange,
   onDropKnowledgeItem,
+  isTypewriterMode = false,
 }) => {
   const isInternalUpdate = useRef(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const hasRestoredCursor = useRef(false);
 
   const editor = useEditor({
     extensions: [
@@ -45,6 +51,17 @@ export const TipTapEditor: React.FC<TipTapEditorProps> = ({
       isInternalUpdate.current = true;
       const html = editor.getHTML();
       onChange(html);
+
+      // Save cursor position
+      if (notebookId) {
+        const { selection } = editor.state;
+        if (selection) {
+          localStorage.setItem(
+            `passio_notebook_cursor_${notebookId}`,
+            JSON.stringify({ from: selection.from, to: selection.to })
+          );
+        }
+      }
     },
     editorProps: {
       attributes: {
@@ -52,6 +69,120 @@ export const TipTapEditor: React.FC<TipTapEditorProps> = ({
       },
     },
   });
+
+  // Restore cursor selection & scroll position on editor load
+  useEffect(() => {
+    if (!editor || !notebookId || hasRestoredCursor.current) return;
+    hasRestoredCursor.current = true;
+
+    // Restore cursor position
+    const savedCursor = localStorage.getItem(`passio_notebook_cursor_${notebookId}`);
+    if (savedCursor) {
+      try {
+        const { from, to } = JSON.parse(savedCursor);
+        const docSize = editor.state.doc.content.size;
+        const safeFrom = Math.min(Math.max(1, from), docSize);
+        const safeTo = Math.min(Math.max(1, to), docSize);
+
+        setTimeout(() => {
+          if (!editor.isDestroyed) {
+            editor.commands.setTextSelection({ from: safeFrom, to: safeTo });
+            editor.commands.focus();
+          }
+        }, 100);
+      } catch {
+        // ignore
+      }
+    }
+
+    // Restore scroll position
+    const savedScroll = localStorage.getItem(`passio_notebook_scroll_${notebookId}`);
+    if (savedScroll && containerRef.current) {
+      const scrollTop = parseInt(savedScroll, 10);
+      if (!isNaN(scrollTop)) {
+        setTimeout(() => {
+          if (containerRef.current) {
+            containerRef.current.scrollTop = scrollTop;
+          }
+        }, 120);
+      }
+    }
+  }, [editor, notebookId]);
+
+  // Track cursor position changes
+  useEffect(() => {
+    if (!editor) return;
+
+    const handleSelection = () => {
+      if (notebookId) {
+        const { selection } = editor.state;
+        if (selection) {
+          localStorage.setItem(
+            `passio_notebook_cursor_${notebookId}`,
+            JSON.stringify({ from: selection.from, to: selection.to })
+          );
+        }
+      }
+
+      if (isTypewriterMode) {
+        scrollToCursor();
+      }
+    };
+
+    editor.on('selectionUpdate', handleSelection);
+    return () => {
+      editor.off('selectionUpdate', handleSelection);
+    };
+  }, [editor, notebookId, isTypewriterMode]);
+
+  // Typewriter Mode Center Scroll Logic
+  const scrollToCursor = useCallback(() => {
+    if (!isTypewriterMode || !editor || !containerRef.current) return;
+    const { selection } = editor.state;
+    if (!selection) return;
+
+    try {
+      const domAtPos = editor.view.domAtPos(selection.from);
+      let element = domAtPos.node as HTMLElement;
+      if (element && element.nodeType === Node.TEXT_NODE) {
+        element = element.parentElement as HTMLElement;
+      }
+
+      if (element && containerRef.current) {
+        const container = containerRef.current;
+        const rect = element.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+
+        const relativeTop = rect.top - containerRect.top + container.scrollTop;
+        const targetScrollTop = relativeTop - containerRect.height * 0.45;
+
+        container.scrollTo({
+          top: Math.max(0, targetScrollTop),
+          behavior: 'smooth',
+        });
+      }
+    } catch {
+      // ignore
+    }
+  }, [editor, isTypewriterMode]);
+
+  useEffect(() => {
+    if (!editor) return;
+
+    const handleSelection = () => {
+      if (isTypewriterMode) {
+        scrollToCursor();
+      }
+    };
+
+    editor.on('selectionUpdate', handleSelection);
+    editor.on('update', handleSelection);
+
+    return () => {
+      editor.off('selectionUpdate', handleSelection);
+      editor.off('update', handleSelection);
+    };
+  }, [editor, isTypewriterMode, scrollToCursor]);
 
   // Sync editor content when initialContent changes externally
   useEffect(() => {
@@ -118,7 +249,18 @@ export const TipTapEditor: React.FC<TipTapEditorProps> = ({
   };
 
   return (
-    <div className="w-full flex flex-col items-center h-full overflow-y-auto px-4 pt-16 sm:pt-20 pb-16">
+    <div
+      ref={containerRef}
+      onScroll={(e) => {
+        if (notebookId) {
+          const target = e.currentTarget;
+          localStorage.setItem(`passio_notebook_scroll_${notebookId}`, target.scrollTop.toString());
+        }
+      }}
+      className={`w-full flex flex-col items-center h-full overflow-y-auto px-4 transition-all duration-300 ${
+        isTypewriterMode ? 'pt-[42vh] pb-[52vh]' : 'pt-16 sm:pt-20 pb-16'
+      }`}
+    >
       <WritingBubbleMenu editor={editor} />
 
       {/* Editor Main Canvas Container */}

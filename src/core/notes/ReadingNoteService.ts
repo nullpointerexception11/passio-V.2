@@ -78,9 +78,15 @@ class ReadingNoteDomainService {
     try {
       await ReadingNoteRepository.deleteNote(noteId);
 
-      const currentList = this.activeNotes.get(materialId) || [];
-      const updatedList = currentList.filter((n) => n.id !== noteId);
-      this.activeNotes.set(materialId, updatedList);
+      const targetMatId = materialId || Array.from(this.activeNotes.entries()).find(([_, list]) =>
+        list.some((n) => n.id === noteId)
+      )?.[0];
+
+      if (targetMatId) {
+        const currentList = this.activeNotes.get(targetMatId) || [];
+        const updatedList = currentList.filter((n) => n.id !== noteId);
+        this.activeNotes.set(targetMatId, updatedList);
+      }
 
       this.notifyListeners();
       Logger.info('ReadingNoteService', `Deleted reading note [${noteId}]`);

@@ -28,11 +28,59 @@ export class HighlightRepositoryService {
     try {
       Logger.debug('HighlightRepository', 'Fetching all highlights across materials');
       const rows = await this.dbInstance.select<DBHighlightRow>('highlights');
+      if (rows.length === 0) {
+        return await this.seedInitialHighlights();
+      }
       return this.mapRowsToFragments(rows);
     } catch (err) {
       Logger.error('HighlightRepository', 'Failed to load all highlights', err);
       return [];
     }
+  }
+
+  private async seedInitialHighlights(): Promise<IHighlightFragment[]> {
+    const now = new Date();
+    const today = now.toISOString();
+    const yesterday = new Date(now.getTime() - 86400000 * 1.2).toISOString();
+    const thisWeek = new Date(now.getTime() - 86400000 * 4).toISOString();
+
+    const seeds: IHighlightFragment[] = [
+      {
+        id: 'hl-sample-1',
+        materialId: 'dostoyevski-notes-from-underground',
+        pageNumber: 12,
+        selectedText: 'İnsan acıyı ve mahvoluşu sever; bu kaçınılmaz bir gerçektir.',
+        rects: [],
+        color: 'yellow',
+        createdAt: today,
+        updatedAt: today,
+      },
+      {
+        id: 'hl-sample-2',
+        materialId: 'stefan-zweig-chess',
+        pageNumber: 2,
+        selectedText: 'Bütün zeka ve hayal gücünü tek bir kareye sıkıştırmak insan zihninin muazzam bir çabasıdır.',
+        rects: [],
+        color: 'green',
+        createdAt: yesterday,
+        updatedAt: yesterday,
+      },
+      {
+        id: 'hl-sample-3',
+        materialId: 'dostoyevski-notes-from-underground',
+        pageNumber: 24,
+        selectedText: 'Sadece bilmek yetmez, bildiğini yaşamak ve hissetmek gerekir.',
+        rects: [],
+        color: 'blue',
+        createdAt: thisWeek,
+        updatedAt: thisWeek,
+      },
+    ];
+
+    for (const s of seeds) {
+      await this.saveHighlight(s);
+    }
+    return seeds;
   }
 
   /**

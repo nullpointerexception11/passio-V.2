@@ -78,7 +78,7 @@ export default function App() {
 
   const handleUnlock = () => {
     setIsUnlocked(true);
-    setShowSplash(true);
+    setShowSplash(false);
   };
 
   const handleLock = () => {

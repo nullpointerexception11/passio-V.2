@@ -14,6 +14,7 @@ interface DocumentRightPanelProps {
   notebook: INotebook;
   references: INotebookReference[];
   wordCount: number;
+  characterCount?: number;
   readingTimeMinutes: number;
   onClose: () => void;
   onOpenSettings: () => void;
@@ -26,6 +27,7 @@ export const DocumentRightPanel: React.FC<DocumentRightPanelProps> = ({
   notebook,
   references,
   wordCount,
+  characterCount = 0,
   readingTimeMinutes,
   onClose,
   onOpenSettings,
@@ -33,9 +35,6 @@ export const DocumentRightPanel: React.FC<DocumentRightPanelProps> = ({
   onRemoveReference,
 }) => {
   if (!isOpen) return null;
-
-  const targetWordCount = 1000;
-  const progressPercent = Math.min(100, Math.round((wordCount / targetWordCount) * 100));
 
   return (
     <motion.aside
@@ -69,7 +68,7 @@ export const DocumentRightPanel: React.FC<DocumentRightPanelProps> = ({
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-6">
-        {/* Document Stats Card */}
+        {/* Document Stats Card - Display only Words, Characters, Estimated reading time */}
         <div
           className="p-4 rounded-xl border flex flex-col gap-3"
           style={{
@@ -84,37 +83,29 @@ export const DocumentRightPanel: React.FC<DocumentRightPanelProps> = ({
             </span>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 pt-2 border-t border-black/5 dark:border-white/5 text-xs font-mono">
-            <div className="flex items-center gap-2">
-              <Hash className="w-3.5 h-3.5 text-amber-500" />
-              <div>
-                <div className="text-[10px] opacity-50">Kelime</div>
-                <div className="font-semibold">{wordCount}</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Clock className="w-3.5 h-3.5 text-blue-500" />
-              <div>
-                <div className="text-[10px] opacity-50">Tahmini Okuma</div>
-                <div className="font-semibold">{readingTimeMinutes} dk</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Goal Progress Bar */}
-          <div className="flex flex-col gap-1.5 pt-2 border-t border-black/5 dark:border-white/5">
-            <div className="flex items-center justify-between text-[10px] font-mono opacity-60">
-              <span className="flex items-center gap-1">
-                <Target className="w-3 h-3 text-amber-500" />
-                Hedef: 1000 Kelime
+          <div className="flex flex-col gap-2 pt-2 border-t border-black/5 dark:border-white/5 text-xs font-mono">
+            <div className="flex items-center justify-between">
+              <span className="opacity-60 flex items-center gap-1.5">
+                <Hash className="w-3.5 h-3.5 text-amber-500" />
+                Kelime
               </span>
-              <span>%{progressPercent}</span>
+              <span className="font-semibold">{wordCount}</span>
             </div>
-            <div className="w-full h-1.5 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
-              <div
-                className="h-full bg-amber-500 transition-all duration-300 rounded-full"
-                style={{ width: `${progressPercent}%` }}
-              />
+
+            <div className="flex items-center justify-between">
+              <span className="opacity-60 flex items-center gap-1.5">
+                <Target className="w-3.5 h-3.5 text-amber-500" />
+                Karakter
+              </span>
+              <span className="font-semibold">{characterCount}</span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="opacity-60 flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-blue-500" />
+                Tahmini Okuma
+              </span>
+              <span className="font-semibold">{readingTimeMinutes} dk</span>
             </div>
           </div>
         </div>

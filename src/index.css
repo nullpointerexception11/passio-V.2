@@ -54,7 +54,7 @@ textarea:focus, input:focus {
   outline: none;
 }
 
-/* PDF.js Text Layer styling rules */
+/* PDF.js Text Selection Overrides for Passio's design aesthetics */
 .textLayer, [data-pdf-text-layer="true"] {
   color-scheme: only light;
   position: absolute;
@@ -70,46 +70,128 @@ textarea:focus, input:focus {
   text-size-adjust: none;
   forced-color-adjust: none;
   transform-origin: 0 0;
+  caret-color: CanvasText;
+
+  /* Elevate text selection layer above canvas and highlight layers */
   z-index: 20;
-  pointer-events: auto;
-  cursor: text;
-  -webkit-user-select: text;
-  -moz-user-select: text;
-  user-select: text;
-}
 
-.textLayer :is(span, br), [data-pdf-text-layer="true"] :is(span, br) {
-  color: transparent !important;
-  position: absolute;
-  white-space: pre;
-  cursor: text;
-  transform-origin: 0% 0%;
-  -webkit-user-select: text;
-  -moz-user-select: text;
-  user-select: text;
-  pointer-events: auto;
-}
+  &.highlighting {
+    touch-action: none;
+  }
 
-.textLayer, [data-pdf-text-layer="true"] {
+  :is(span, br) {
+    color: transparent !important;
+    position: absolute;
+    white-space: pre;
+    cursor: text;
+    transform-origin: 0% 0%;
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    user-select: text;
+    pointer-events: auto;
+  }
+
   --min-font-size: 1;
-  --text-scale-factor: calc(var(--total-scale-factor, var(--scale-factor, 1)) * var(--min-font-size));
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
   --min-font-size-inv: calc(1 / var(--min-font-size));
-  --total-scale-factor: calc(var(--scale-factor, 1) * var(--user-unit, 1));
-}
 
-.textLayer .markedContent, [data-pdf-text-layer="true"] .markedContent {
-  display: contents;
-}
+  > :not(.markedContent),
+  .markedContent span:not(.markedContent) {
+    z-index: 1;
+    --font-height: 0;
+    font-size: calc(var(--text-scale-factor) * var(--font-height));
+    --scale-x: 1;
+    --rotate: 0deg;
+    transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+  }
 
-.textLayer span[role="img"], [data-pdf-text-layer="true"] span[role="img"] {
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  user-select: none;
-  cursor: default;
-}
+  .markedContent {
+    display: contents;
+  }
 
-.textLayer ::selection, [data-pdf-text-layer="true"] ::selection {
-  background: rgba(251, 191, 36, 0.4) !important; /* Amber highlight selection */
-  color: transparent !important;
+  span[role="img"] {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
+    cursor: default;
+  }
+
+  .highlight {
+    --highlight-bg-color: rgb(180 0 170 / 0.25);
+    --highlight-selected-bg-color: rgb(0 100 0 / 0.25);
+    --highlight-backdrop-filter: none;
+    --highlight-selected-backdrop-filter: none;
+
+    margin: -1px;
+    padding: 1px;
+    background-color: var(--highlight-bg-color);
+    backdrop-filter: var(--highlight-backdrop-filter);
+    border-radius: 4px;
+
+    &.appended {
+      position: initial;
+    }
+
+    &.begin {
+      border-radius: 4px 0 0 4px;
+    }
+
+    &.end {
+      border-radius: 0 4px 4px 0;
+    }
+
+    &.middle {
+      border-radius: 0;
+    }
+
+    &.selected {
+      background-color: var(--highlight-selected-bg-color);
+      backdrop-filter: var(--highlight-selected-backdrop-filter);
+      scroll-margin-top: 50px;
+    }
+  }
+
+  /* Custom Amber text selection to match Passio's warm premium aesthetic */
+  ::selection {
+    background: rgba(251, 191, 36, 0.4) !important;
+    color: transparent !important;
+  }
+  ::-moz-selection {
+    background: rgba(251, 191, 36, 0.4) !important;
+    color: transparent !important;
+  }
+
+  &.selectionRendering {
+    ::-moz-selection {
+      background: transparent !important;
+      color: transparent !important;
+    }
+    ::selection {
+      background: transparent !important;
+      color: transparent !important;
+    }
+  }
+
+  br::-moz-selection {
+    background: transparent !important;
+  }
+  br::selection {
+    background: transparent !important;
+  }
+
+  .endOfContent {
+    display: block;
+    position: absolute;
+    inset: 100% 0 0;
+    z-index: 0;
+    cursor: default;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
+  }
+
+  &.selecting .endOfContent {
+    top: 0;
+  }
 }
 

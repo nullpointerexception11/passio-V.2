@@ -4,9 +4,11 @@
  */
 
 import React from 'react';
-import { ArrowLeft, Sun, Moon, Lock } from 'lucide-react';
+import { ArrowLeft, Sun, Moon, Lock, Search, Inbox } from 'lucide-react';
 import { useTheme } from '../../core/theme/ThemeContext';
 import { useSession } from '../../core/session/SessionContext';
+import { useGlobalSearch } from '../../core/search/GlobalSearchContext';
+import { useInbox } from '../../core/inbox/InboxContext';
 
 export interface HeaderProps {
   title: string;
@@ -25,6 +27,8 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const { themeType, toggleTheme } = useTheme();
   const { lockSession } = useSession();
+  const { openSearch } = useGlobalSearch();
+  const { openCapture, openManager } = useInbox();
 
   return (
     <header
@@ -52,6 +56,29 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       <div className="flex items-center gap-3">
+        <button
+          onClick={openCapture}
+          className="px-3 py-1.5 rounded-xl border text-xs font-mono flex items-center gap-2 cursor-pointer transition-all hover:bg-amber-500/10 hover:border-amber-500/40 opacity-80 hover:opacity-100 text-amber-600 dark:text-amber-400 font-medium"
+          style={{ borderColor: 'var(--color-border-subtle)' }}
+          title="Hızlı Not (Ctrl + Shift + Space)"
+        >
+          <Inbox className="w-3.5 h-3.5 text-amber-500" />
+          <span className="hidden sm:inline">Gelen Kutusu</span>
+        </button>
+
+        <button
+          onClick={openSearch}
+          className="px-3 py-1.5 rounded-xl border text-xs font-mono flex items-center gap-2 cursor-pointer transition-all hover:bg-black/5 dark:hover:bg-white/5 opacity-80 hover:opacity-100"
+          style={{ borderColor: 'var(--color-border-subtle)' }}
+          title="Genel Arama (CTRL + K)"
+        >
+          <Search className="w-3.5 h-3.5 text-amber-500" />
+          <span className="hidden sm:inline">Ara</span>
+          <kbd className="px-1.5 py-0.5 text-[10px] rounded border bg-black/5 dark:bg-white/5 font-mono opacity-60">
+            CTRL+K
+          </kbd>
+        </button>
+
         {actions}
 
         {showThemeToggle && (

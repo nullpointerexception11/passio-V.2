@@ -12,29 +12,29 @@ import {
   Settings2, 
   ZoomIn, 
   ZoomOut, 
-  Maximize2, 
   BookOpen, 
   ScrollText, 
   Check, 
-  Plus, 
   Search,
-  Sun,
-  Moon,
   Crop,
-  Download,
-  List
+  List,
+  Bookmark,
+  Clock,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { usePdfReader } from './usePdfReader';
 import { usePdfSearch } from './usePdfSearch';
 import { usePdfOutline } from './usePdfOutline';
 import { PdfReaderEngine } from './PdfReaderEngine';
-import { ReadingNoteDialog } from '../../components/molecules/ReadingNoteDialog';
-import { ReadingNoteSearchDialog } from '../../components/molecules/ReadingNoteSearchDialog';
 import { PdfIndexingStatusBadge } from '../../components/atoms/PdfIndexingStatusBadge';
 import { PdfSearchDialog } from '../../components/molecules/PdfSearchDialog';
 import { PdfTocSidebar } from '../../components/molecules/PdfTocSidebar';
 import { ExportDocumentModal } from '../../components/molecules/ExportDocumentModal';
-import { useTheme, READING_MODES, PdfReadingMode } from '../../core/theme/ThemeContext';
+import { useTheme, PdfReadingMode } from '../../core/theme/ThemeContext';
+import { BookmarkService } from '../../core/bookmark/BookmarkService';
+import { ReadingTimeService, formatReadingDuration, IReadingTimeStats } from '../../core/time/ReadingTimeService';
+import { PdfRightSidebar, SidebarTab } from './components/PdfRightSidebar';
 
 export interface PdfReaderScreenProps {
   docId: string;
@@ -64,13 +64,6 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
     viewMode,
     showSettings,
     setShowSettings,
-    showNoteMenu,
-    setShowNoteMenu,
-    showNoteDialog,
-    setShowNoteDialog,
-    showSearchNoteDialog,
-    setShowSearchNoteDialog,
-    editingNote,
     notes,
     handleZoomIn,
     handleZoomOut,
@@ -78,11 +71,6 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
     toggleFitPage,
     toggleAutoCropMargins,
     setViewMode,
-    handleOpenNewNote,
-    handleOpenSearchNote,
-    handleSaveNote,
-    handleSelectNoteFromSearch,
-    handleDeleteNote,
     handlePageChange,
   } = usePdfReader({
     docId,
@@ -91,17 +79,66 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
     onClose,
   });
 
-  const { themeType, toggleTheme, pdfReadingMode, setPdfReadingMode } = useTheme();
+  const { pdfReadingMode, setPdfReadingMode } = useTheme();
 
-  // Sidebar visibility state
-  const [isNotePanelVisible, setIsNotePanelVisible] = useState<boolean>(false);
+  // Unified Right Sidebar State (Notes | Highlights | Bookmarks)
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
+    const saved = localStorage.getItem(`passio_pdf_sidebar_open_${docId}`);
+    return saved === 'true';
+  });
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>(() => {
+    const saved = localStorage.getItem(`passio_pdf_sidebar_tab_${docId}`);
+    return (saved as SidebarTab) || 'notes';
+  });
 
-  // Sync dialog visibility with panel visibility
   useEffect(() => {
-    if (showNoteDialog || showSearchNoteDialog) {
-      setIsNotePanelVisible(true);
-    }
-  }, [showNoteDialog, showSearchNoteDialog]);
+    localStorage.setItem(`passio_pdf_sidebar_open_${docId}`, String(isSidebarOpen));
+  }, [isSidebarOpen, docId]);
+
+  useEffect(() => {
+    localStorage.setItem(`passio_pdf_sidebar_tab_${docId}`, sidebarTab);
+  }, [sidebarTab, docId]);
+
+  // Bookmarks State
+  const [isBookmarked, setIsBookmarked] = useState<boolean>(false);
+
+  // Distraction Free Mode State
+  const [isDistractionFree, setIsDistractionFree] = useState<boolean>(() => {
+    return localStorage.getItem('passio_pdf_distraction_free') === 'true';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('passio_pdf_distraction_free', String(isDistractionFree));
+  }, [isDistractionFree]);
+
+  // Reading Time Stats State (Daily and Weekly totals)
+  const [readingStats, setReadingStats] = useState<IReadingTimeStats>({
+    todaySeconds: 0,
+    thisWeekSeconds: 0,
+    dailyGoalSeconds: 1800,
+  });
+
+  // Track reading session lifecycle
+  useEffect(() => {
+    ReadingTimeService.startSession(docId, docTitle);
+    setReadingStats(ReadingTimeService.getStats());
+    const unsub = ReadingTimeService.subscribe((stats) => {
+      setReadingStats(stats);
+    });
+    return () => {
+      ReadingTimeService.endSession();
+      unsub();
+    };
+  }, [docId, docTitle]);
+
+  // Monitor bookmark status for active page
+  useEffect(() => {
+    setIsBookmarked(BookmarkService.isBookmarked(docId, currentPage));
+    const unsub = BookmarkService.subscribe(() => {
+      setIsBookmarked(BookmarkService.isBookmarked(docId, currentPage));
+    });
+    return () => unsub();
+  }, [docId, currentPage]);
 
   // TOC (Outline) Engine
   const { outline } = usePdfOutline(pdfDoc);
@@ -122,16 +159,6 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
   // Export Notes Modal State
   const [showExportModal, setShowExportModal] = useState<boolean>(false);
 
-  // Permanent Side Panel Mode: 'list' (search & view notes) or 'edit' (create / edit note)
-  const [notePanelMode, setNotePanelMode] = useState<'list' | 'edit'>('list');
-
-  // Sync with editingNote if set externally
-  useEffect(() => {
-    if (editingNote) {
-      setNotePanelMode('edit');
-    }
-  }, [editingNote]);
-
   // Jump to specific page
   const handleJumpToPage = (pageNum: number) => {
     const pageElem = document.getElementById(`pdf-page-container-${pageNum}`);
@@ -140,17 +167,24 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
     }
   };
 
-  // Keyboard shortcut (Ctrl/Cmd + F for PDF Search, Ctrl/Cmd + O for TOC)
+  // Keyboard shortcut (F11 for Distraction Free, Ctrl/Cmd + F for PDF Search)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+      if (e.key === 'F11') {
         e.preventDefault();
-        toggleSearch();
+        setIsDistractionFree((prev) => !prev);
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        if (!isDistractionFree) {
+          toggleSearch();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [toggleSearch]);
+  }, [toggleSearch, isDistractionFree]);
+
+  const progressPercent = totalPages > 0 ? (currentPage / totalPages) * 100 : 0;
 
   return (
     <div
@@ -162,16 +196,17 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
       }}
     >
       {/* Top Header Bar - Minimal Controls */}
-      <header 
+      {!isDistractionFree && (
+        <header 
         className="h-14 px-6 flex items-center justify-between border-b z-40 relative backdrop-blur-md transition-all duration-300 shrink-0 opacity-0 hover:opacity-100"
         style={{
           borderColor: 'var(--color-border-subtle)',
           backgroundColor: 'var(--color-bg-surface)',
         }}
       >
-        {/* Header Controls (Left: Doc Info + Search + Settings, Right: Notes/Close) */}
+        {/* Header Controls */}
         <div className="flex items-center justify-between gap-4 w-full">
-          {/* Left Side: Info, Search, Settings */}
+          {/* Left Side: Info, Search, Settings, Reading Time */}
           <div className="flex items-center gap-3">
             {/* TOC Sidebar Toggle Button */}
             {outline.length > 0 && (
@@ -197,10 +232,44 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
               </div>
             </div>
 
-            <div className="w-px h-6 bg-stone-300 dark:bg-stone-700 mx-2" />
+            <div className="w-px h-6 bg-stone-300 dark:bg-stone-700 mx-1 hidden sm:block" />
+
+            {/* Subtle Reading Duration Indicator (Daily & Weekly Totals) */}
+            <div
+              className="hidden md:flex flex-col gap-1 px-2.5 py-1 rounded-lg border bg-black/5 dark:bg-white/5 text-[10px] font-mono opacity-80"
+              style={{ borderColor: 'var(--color-border-subtle)' }}
+              title="Okuma Oturumu ve Süre Takibi"
+            >
+              <div className="flex items-center gap-1.5">
+                <Clock className="w-3 h-3 text-amber-500 shrink-0" />
+                <span>Bugün: <strong>{formatReadingDuration(readingStats.todaySeconds)}</strong></span>
+                <span className="opacity-30">•</span>
+                <span>Bu Hafta: <strong>{formatReadingDuration(readingStats.thisWeekSeconds)}</strong></span>
+              </div>
+              <div className="w-full h-0.5 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-amber-500/70 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, (readingStats.todaySeconds / readingStats.dailyGoalSeconds) * 100)}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="w-px h-6 bg-stone-300 dark:bg-stone-700 mx-1" />
 
             <div className="flex items-center gap-2">
-              {/* PDF Arama Butonu */}
+              {/* Single Click Bookmark Toggle */}
+              <button
+                onClick={() => BookmarkService.toggleBookmark(docId, currentPage)}
+                className={`p-2 rounded border transition-all cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 active:scale-95 flex items-center justify-center ${
+                  isBookmarked ? 'bg-amber-500/10 border-amber-500 text-amber-500' : ''
+                }`}
+                style={{ borderColor: isBookmarked ? undefined : 'var(--color-border-subtle)' }}
+                title={isBookmarked ? 'Sayfayı Yer İmlerinden Çıkar' : 'Sayfayı Yer İmlerine Ekle'}
+              >
+                <Bookmark className={`w-4 h-4 ${isBookmarked ? 'fill-amber-500' : ''}`} />
+              </button>
+
+              {/* PDF Search Button */}
               <button
                 onClick={toggleSearch}
                 className="p-2 rounded border transition-all cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 active:scale-95 flex items-center justify-center"
@@ -213,7 +282,7 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
                 <Search className="w-4 h-4" />
               </button>
 
-              {/* Ayarlar */}
+              {/* Reader Settings */}
               <div className="relative">
                 <button
                   onClick={() => setShowSettings((prev) => !prev)}
@@ -242,7 +311,7 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
                         boxShadow: 'var(--shadows-large)',
                       }}
                     >
-                      {/* Okuma Modu */}
+                      {/* Reading Mode */}
                       <div className="flex flex-col gap-2">
                         <span className="text-stone-400 dark:text-stone-500 uppercase tracking-wider text-[10px] font-semibold">Okuma Modu</span>
                         <div className="grid grid-cols-3 gap-1 bg-stone-100 dark:bg-stone-800/50 p-1 rounded-lg">
@@ -262,7 +331,7 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
                         </div>
                       </div>
 
-                      {/* Sayfa Akışı */}
+                      {/* Page View Mode */}
                       <div className="flex flex-col gap-2">
                         <span className="text-stone-400 dark:text-stone-500 uppercase tracking-wider text-[10px] font-semibold">Sayfa Akışı</span>
                         <div className="grid grid-cols-2 gap-1 bg-stone-100 dark:bg-stone-800/50 p-1 rounded-lg">
@@ -292,7 +361,7 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
                         </div>
                       </div>
 
-                      {/* Yakınlaştırma */}
+                      {/* Zoom Controls */}
                       <div className="flex flex-col gap-2">
                         <span className="text-stone-400 dark:text-stone-500 uppercase tracking-wider text-[10px] font-semibold">Yakınlaştırma</span>
                         <div className="flex items-center justify-between border rounded-lg p-1.5" style={{ borderColor: 'var(--color-border-subtle)' }}>
@@ -318,7 +387,7 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
                         </div>
                       </div>
 
-                      {/* Seçenekler */}
+                      {/* Options */}
                       <div className="flex flex-col gap-2">
                         <span className="text-stone-400 dark:text-stone-500 uppercase tracking-wider text-[10px] font-semibold">Seçenekler</span>
                         <div className="flex flex-col gap-1.5">
@@ -342,7 +411,7 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
                             className="flex items-center justify-between w-full p-2 rounded-lg border text-left transition-all hover:bg-stone-50 dark:hover:bg-stone-800/30 cursor-pointer"
                             style={{ borderColor: 'var(--color-border-subtle)' }}
                           >
-                            <span className="text-stone-700 dark:text-stone-300">Sayfaya Sığdır (Tüm Ekran)</span>
+                            <span className="text-stone-700 dark:text-stone-300">Sayfaya Sığdır</span>
                             <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${
                               fitMode === 'page'
                                 ? 'bg-amber-500 border-amber-500 text-white' 
@@ -378,62 +447,84 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
             </div>
           </div>
 
-          {/* Right Side: Notes, Close */}
+          {/* Right Side: Sidebar Tabs & Close */}
           <div className="flex items-center gap-2">
-            {/* Not Paneli Toggle */}
+            {/* Notes Tab Button */}
             <button
               onClick={() => {
-                if (isNotePanelVisible && showNoteDialog) {
-                  setIsNotePanelVisible(false);
-                  setShowNoteDialog(false);
+                if (isSidebarOpen && sidebarTab === 'notes') {
+                  setIsSidebarOpen(false);
                 } else {
-                  setIsNotePanelVisible(true);
-                  setShowNoteDialog(true);
-                  setShowSearchNoteDialog(false);
-                  handleOpenNewNote();
+                  setIsSidebarOpen(true);
+                  setSidebarTab('notes');
                 }
               }}
-              className="p-2 rounded border transition-all cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 active:scale-95 flex items-center justify-center"
-              style={{
-                borderColor: (isNotePanelVisible && showNoteDialog) ? 'var(--color-text-accent)' : 'var(--color-border-subtle)',
-                color: 'var(--color-text-primary)',
-              }}
-              title="Not Ekle"
+              className={`p-2 rounded border transition-all cursor-pointer flex items-center justify-center ${
+                isSidebarOpen && sidebarTab === 'notes' ? 'border-amber-500 text-amber-500 bg-amber-500/10' : ''
+              }`}
+              style={{ borderColor: (isSidebarOpen && sidebarTab === 'notes') ? undefined : 'var(--color-border-subtle)' }}
+              title="Notlar"
             >
               <FileText className="w-4 h-4" />
             </button>
 
-            {/* Not Arama Butonu */}
+            {/* Highlights Tab Button */}
             <button
               onClick={() => {
-                if (isNotePanelVisible && showSearchNoteDialog) {
-                  setIsNotePanelVisible(false);
-                  setShowSearchNoteDialog(false);
+                if (isSidebarOpen && sidebarTab === 'highlights') {
+                  setIsSidebarOpen(false);
                 } else {
-                  setIsNotePanelVisible(true);
-                  setShowSearchNoteDialog(true);
-                  setShowNoteDialog(false);
-                  handleOpenSearchNote();
+                  setIsSidebarOpen(true);
+                  setSidebarTab('highlights');
                 }
               }}
-              className="p-2 rounded border transition-all cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 active:scale-95 flex items-center justify-center"
-              style={{
-                borderColor: (isNotePanelVisible && showSearchNoteDialog) ? 'var(--color-text-accent)' : 'var(--color-border-subtle)',
-                color: 'var(--color-text-primary)',
-              }}
-              title="Not Ara"
+              className={`p-2 rounded border transition-all cursor-pointer flex items-center justify-center ${
+                isSidebarOpen && sidebarTab === 'highlights' ? 'border-amber-500 text-amber-500 bg-amber-500/10' : ''
+              }`}
+              style={{ borderColor: (isSidebarOpen && sidebarTab === 'highlights') ? undefined : 'var(--color-border-subtle)' }}
+              title="Alıntılar"
             >
-              <Search className="w-4 h-4" />
+              <Highlighter className="w-4 h-4" />
             </button>
 
-            {/* Kapat */}
+            {/* Bookmarks Tab Button */}
+            <button
+              onClick={() => {
+                if (isSidebarOpen && sidebarTab === 'bookmarks') {
+                  setIsSidebarOpen(false);
+                } else {
+                  setIsSidebarOpen(true);
+                  setSidebarTab('bookmarks');
+                }
+              }}
+              className={`p-2 rounded border transition-all cursor-pointer flex items-center justify-center ${
+                isSidebarOpen && sidebarTab === 'bookmarks' ? 'border-amber-500 text-amber-500 bg-amber-500/10' : ''
+              }`}
+              style={{ borderColor: (isSidebarOpen && sidebarTab === 'bookmarks') ? undefined : 'var(--color-border-subtle)' }}
+              title="Yer İmleri"
+            >
+              <Bookmark className={`w-4 h-4 ${isBookmarked ? 'fill-amber-500' : ''}`} />
+            </button>
+
+            <div className="w-px h-6 bg-stone-300 dark:bg-stone-700 mx-1" />
+
+            {/* Distraction Free Mode Toggle */}
+            <button
+              onClick={() => setIsDistractionFree(true)}
+              className="p-2 rounded border transition-all cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 active:scale-95 flex items-center justify-center text-stone-600 dark:text-stone-300"
+              style={{ borderColor: 'var(--color-border-subtle)' }}
+              title="Odaklanma Modu (F11)"
+            >
+              <Maximize2 className="w-4 h-4" />
+            </button>
+
+            <div className="w-px h-6 bg-stone-300 dark:bg-stone-700 mx-1" />
+
+            {/* Close Reader */}
             <button
               onClick={onClose}
               className="p-2 rounded border transition-all cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 active:scale-95 flex items-center justify-center"
-              style={{
-                borderColor: 'var(--color-border-subtle)',
-                color: 'var(--color-text-primary)',
-              }}
+              style={{ borderColor: 'var(--color-border-subtle)' }}
               title="Kapat (Esc)"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -441,16 +532,14 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
           </div>
         </div>
       </header>
+      )}
 
-      {/* Center PDF View Engine Area & Optional Side Panel */}
+      {/* Center PDF View Engine Area & Right Sidebar */}
       <div 
-        className={`flex-1 w-full h-[calc(100vh-3.5rem)] overflow-hidden grid ${
-          isNotePanelVisible ? 'grid-cols-1 lg:grid-cols-[80%_20%]' : 'grid-cols-1'
-        }`}
+        className={`flex-1 w-full ${isDistractionFree ? 'h-full' : 'h-[calc(100vh-3.5rem)]'} overflow-hidden flex`}
       >
-        <main className="h-full w-full relative overflow-hidden min-w-0">
+        <main className="h-full flex-1 relative overflow-hidden min-w-0">
           {isLoading ? (
-            /* Premium Calm Skeleton Loading View */
             <div className="flex flex-col items-center justify-center h-full gap-4">
               <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin border-neutral-400" />
               <span className="text-xs font-mono tracking-widest uppercase opacity-50">
@@ -460,6 +549,7 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
           ) : pdfDoc ? (
             <PdfReaderEngine
               docId={docId}
+              docTitle={docTitle}
               pdfDoc={pdfDoc}
               scale={scale}
               fitMode={fitMode}
@@ -475,61 +565,34 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
           )}
         </main>
 
-        {/* Optional Notes Side Panel */}
-        {isNotePanelVisible && (
-          <aside
-            className="h-full w-full border-l shrink-0 z-50 shadow-sm overflow-hidden flex flex-col fixed inset-0 bg-[var(--color-bg-surface)] lg:static lg:shadow-none lg:border-l"
-            style={{
-              borderColor: 'var(--color-border-subtle)',
-              backgroundColor: 'var(--color-bg-surface)',
-            }}
-          >
-            {/* Mobile close button */}
-            <div className="lg:hidden p-4 border-b" style={{ borderColor: 'var(--color-border-subtle)' }}>
-              <button onClick={() => setIsNotePanelVisible(false)} className="p-2 rounded hover:bg-black/5 dark:hover:bg-white/5">
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-            </div>
-            {showNoteDialog && (
-              <ReadingNoteDialog
-                note={editingNote}
-                onSave={async (title, content, tags, existingId) => {
-                  await handleSaveNote(title, content, tags, existingId);
-                  setShowNoteDialog(false);
-                }}
-                onClose={() => {
-                  setShowNoteDialog(false);
-                }}
-                onDelete={async (id) => {
-                  await handleDeleteNote(id);
-                  setShowNoteDialog(false);
-                }}
-              />
-            )}
-            {showSearchNoteDialog && (
-              <ReadingNoteSearchDialog
-                notes={notes}
-                onSelectNote={(note) => {
-                  handleSelectNoteFromSearch(note);
-                  setShowSearchNoteDialog(false);
-                  setShowNoteDialog(true);
-                }}
-                onDeleteNote={handleDeleteNote}
-                onNewNote={() => {
-                  handleOpenNewNote();
-                  setShowSearchNoteDialog(false);
-                  setShowNoteDialog(true);
-                }}
-                onClose={() => setShowSearchNoteDialog(false)}
-              />
-            )}
-          </aside>
+        {/* Right Sidebar (Notes | Highlights | Bookmarks - No Extra Windows) */}
+        {isSidebarOpen && !isDistractionFree && (
+          <div className="w-80 sm:w-96 h-full border-l shrink-0 z-40">
+            <PdfRightSidebar
+              docId={docId}
+              currentPage={currentPage}
+              activeTab={sidebarTab}
+              onChangeTab={setSidebarTab}
+              onClose={() => setIsSidebarOpen(false)}
+              onJumpToPage={handleJumpToPage}
+            />
+          </div>
         )}
       </div>
+
+      {/* Reading Progress Bar (Very thin line at bottom) */}
+      {!isDistractionFree && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 h-0.5 bg-stone-200/40 dark:bg-stone-800/40 pointer-events-none">
+          <div
+            className="h-full bg-amber-500 transition-all duration-300 ease-out"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+      )}
       
       {/* PDF Table of Contents (İçindekiler) Drawer */}
       <PdfTocSidebar
-        isOpen={showToc}
+        isOpen={showToc && !isDistractionFree}
         onClose={() => setShowToc(false)}
         outline={outline}
         onSelectPage={(pageNum) => {
@@ -540,7 +603,7 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
 
       {/* PDF Search Modal Dialog */}
       <PdfSearchDialog
-        isOpen={isSearchOpen}
+        isOpen={isSearchOpen && !isDistractionFree}
         onClose={() => setIsSearchOpen(false)}
         onSearch={handleSearch}
         results={searchResults}
@@ -563,6 +626,18 @@ export const PdfReaderScreen: React.FC<PdfReaderScreenProps> = ({
         docId={docId}
         notes={notes}
       />
+
+      {/* Subtle Floating Exit Button for Distraction-Free Mode */}
+      {isDistractionFree && (
+        <button
+          onClick={() => setIsDistractionFree(false)}
+          className="fixed top-4 right-4 z-50 p-2 rounded-lg border bg-stone-100/90 dark:bg-stone-900/90 hover:bg-stone-200 dark:hover:bg-stone-800 transition-all cursor-pointer opacity-10 hover:opacity-100 text-stone-600 dark:text-stone-300 shadow-sm"
+          style={{ borderColor: 'var(--color-border-subtle)' }}
+          title="Odaklanma Modundan Çık (F11)"
+        >
+          <Minimize2 className="w-4 h-4" />
+        </button>
+      )}
     </div>
   );
 };

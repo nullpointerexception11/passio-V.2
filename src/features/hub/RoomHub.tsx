@@ -9,12 +9,16 @@ import { PASSIO_ROOMS, IRoom } from '../../core/hub/RoomHubService';
 import { RoomIcon } from './RoomIcon';
 import { useTheme } from '../theme/ThemeContext';
 import { useSession } from '../../core/session/SessionContext';
-import { Sun, Moon, Lock } from 'lucide-react';
+import { useGlobalSearch } from '../../core/search/GlobalSearchContext';
+import { Sun, Moon, Lock, Search, Layout, Inbox } from 'lucide-react';
+import { useInbox } from '../../core/inbox/InboxContext';
 
 export const RoomHub: React.FC = () => {
   const navigate = useNavigate();
   const { themeType, toggleTheme } = useTheme();
   const { lockSession } = useSession();
+  const { openSearch } = useGlobalSearch();
+  const { openCapture, openManager } = useInbox();
   const [hoveredRoom, setHoveredRoom] = useState<IRoom | null>(null);
   const [ringRadius, setRingRadius] = useState<number>(150);
 
@@ -84,6 +88,48 @@ export const RoomHub: React.FC = () => {
       </div>
 
       <div className="absolute top-8 right-8 flex items-center gap-3">
+        <button
+          onClick={openCapture}
+          className="px-3.5 py-1.5 rounded-full border text-xs font-mono flex items-center gap-2 cursor-pointer transition-all hover:bg-amber-500/10 hover:border-amber-500/40 opacity-90 hover:opacity-100 text-amber-600 dark:text-amber-400 font-medium"
+          style={{
+            borderColor: 'var(--color-border-subtle)',
+            backgroundColor: 'var(--color-bg-surface)',
+          }}
+          title="Gelen Kutusu (CTRL + SHIFT + SPACE)"
+        >
+          <Inbox className="w-3.5 h-3.5 text-amber-500" />
+          <span>Gelen Kutusu</span>
+        </button>
+
+        <button
+          onClick={() => navigate('/desk')}
+          className="px-3.5 py-1.5 rounded-full border text-xs font-mono flex items-center gap-2 cursor-pointer transition-all hover:bg-amber-500/10 hover:border-amber-500/40 opacity-90 hover:opacity-100 text-amber-600 dark:text-amber-400 font-medium"
+          style={{
+            borderColor: 'var(--color-border-subtle)',
+            backgroundColor: 'var(--color-bg-surface)',
+          }}
+          title="Günün Masası (Daily Desk)"
+        >
+          <Layout className="w-3.5 h-3.5 text-amber-500" />
+          <span>Günün Masası</span>
+        </button>
+
+        <button
+          onClick={openSearch}
+          className="px-3 py-1.5 rounded-full border text-xs font-mono flex items-center gap-2 cursor-pointer transition-all hover:bg-black/5 dark:hover:bg-white/5 opacity-80 hover:opacity-100"
+          style={{
+            borderColor: 'var(--color-border-subtle)',
+            color: 'var(--color-text-primary)',
+          }}
+          title="Genel Arama (CTRL + K)"
+        >
+          <Search className="w-3.5 h-3.5 text-amber-500" />
+          <span className="hidden sm:inline">Ara</span>
+          <kbd className="px-1.5 py-0.5 text-[10px] rounded border bg-black/5 dark:bg-white/5 font-mono opacity-60">
+            CTRL+K
+          </kbd>
+        </button>
+
         <button
           onClick={toggleTheme}
           className="p-2.5 rounded-full border cursor-pointer transition-colors hover:bg-black/5 dark:hover:bg-white/5"

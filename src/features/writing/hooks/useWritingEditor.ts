@@ -21,15 +21,33 @@ export function useWritingEditor(
 
   // Stats
   const [wordCount, setWordCount] = useState<number>(notebook.metadata.wordCount);
+  const [characterCount, setCharacterCount] = useState<number>(0);
   const [readingTimeMinutes, setReadingTimeMinutes] = useState<number>(1);
+
+  // Modes & Quick Note
+  const [isFocusMode, setIsFocusMode] = useState<boolean>(false);
+  const [isTypewriterMode, setIsTypewriterMode] = useState<boolean>(false);
+  const [isQuickNoteOpen, setIsQuickNoteOpen] = useState<boolean>(false);
 
   // References
   const [references, setReferences] = useState<INotebookReference[]>([]);
 
   // UI Panels
-  const [isLeftPanelOpen, setIsLeftPanelOpen] = useState<boolean>(false);
-  const [isRightPanelOpen, setIsRightPanelOpen] = useState<boolean>(false);
+  const [isLeftPanelOpen, setIsLeftPanelOpen] = useState<boolean>(() => {
+    return localStorage.getItem('passio_writing_left_panel') === 'true';
+  });
+  const [isRightPanelOpen, setIsRightPanelOpen] = useState<boolean>(() => {
+    return localStorage.getItem('passio_writing_right_panel') === 'true';
+  });
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+
+  useEffect(() => {
+    localStorage.setItem('passio_writing_left_panel', isLeftPanelOpen.toString());
+  }, [isLeftPanelOpen]);
+
+  useEffect(() => {
+    localStorage.setItem('passio_writing_right_panel', isRightPanelOpen.toString());
+  }, [isRightPanelOpen]);
 
   // Debounce save timer
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -41,6 +59,7 @@ export function useWritingEditor(
 
     const stats = WritingService.calculateTextStats(notebook.content.text);
     setWordCount(stats.wordCount);
+    setCharacterCount(stats.characterCount);
     setReadingTimeMinutes(stats.readingTimeMinutes);
   }, [notebook.metadata.id, notebook.content.text]);
 
@@ -50,6 +69,7 @@ export function useWritingEditor(
       setContentText(newText);
       const stats = WritingService.calculateTextStats(newText);
       setWordCount(stats.wordCount);
+      setCharacterCount(stats.characterCount);
       setReadingTimeMinutes(stats.readingTimeMinutes);
       setSaveStatus('saving');
 
@@ -130,6 +150,7 @@ export function useWritingEditor(
   return {
     contentText,
     wordCount,
+    characterCount,
     readingTimeMinutes,
     settings,
     saveStatus,
@@ -137,9 +158,15 @@ export function useWritingEditor(
     isLeftPanelOpen,
     isRightPanelOpen,
     isSettingsOpen,
+    isFocusMode,
+    isTypewriterMode,
+    isQuickNoteOpen,
     setIsLeftPanelOpen,
     setIsRightPanelOpen,
     setIsSettingsOpen,
+    setIsFocusMode,
+    setIsTypewriterMode,
+    setIsQuickNoteOpen,
     handleContentChange,
     handleInsertKnowledgeItem,
     handleRemoveReference,

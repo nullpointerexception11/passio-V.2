@@ -9,6 +9,20 @@ export type KnowledgeKind = 'annotation' | 'note' | 'insight' | 'reference' | 'h
 export type KnowledgeBridgeType = 'highlight' | 'note' | 'annotation' | 'insight';
 export type KnowledgeBridgeTypeFilter = 'all' | 'highlight' | 'note' | 'annotation' | 'insight';
 
+export type KnowledgeLinkTargetType = 'note' | 'pdf' | 'bookmark';
+
+export interface IKnowledgeLink {
+  id: string;
+  highlightId: string;
+  targetType: KnowledgeLinkTargetType;
+  targetId: string;
+  targetTitle: string;
+  targetSubtitle?: string;
+  materialId?: string;
+  pageNumber?: number;
+  createdAt: string;
+}
+
 /**
  * Core Domain Entity: Knowledge Unit ("Bilgi Parçası")
  * Unified knowledge model connecting Material -> Annotation -> Knowledge -> Writing.
